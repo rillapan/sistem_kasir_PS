@@ -183,9 +183,9 @@
                                             <input type="hidden" name="device_id" value="{{ $transaksi->device->id }}">
                                             <input type="hidden" name="status" value="digunakan">
                                             <input type="hidden" name="status_transaksi" value="sukses">
-                                            <button class="btn btn-success btn-sm" onclick="return confirm('Are you sure?')" title="Update Status">
+                                            {{-- <button class="btn btn-success btn-sm" onclick="return confirm('Are you sure?')" title="Update Status">
                                                 <i class="fa fa-check-square fa-lg" aria-hidden="true"></i>
-                                            </button>
+                                            </button> --}}
                                         </form>
                                         @if($transaksi->status_transaksi === 'berjalan' && $transaksi->id)
                                             <form action="{{ route('transaction.end', $transaksi->id) }}" method="post" class="d-inline">
@@ -196,9 +196,9 @@
                                         <form action="/transaction/{{ $transaksi->id }}" method="post" class="d-inline">
                                             @method('delete')
                                             @csrf
-                                            <button class="btn btn-danger btn-sm" onclick="return confirm('Are you sure?')" title="Hapus">
+                                            {{-- <button class="btn btn-danger btn-sm" onclick="return confirm('Are you sure?')" title="Hapus">
                                                 <i class="fas fa-trash-alt fa-lg"></i>
-                                            </button>
+                                            </button> --}}
                                         </form>
                                     </div>
                                 </td>
