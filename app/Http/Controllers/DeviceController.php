@@ -67,14 +67,28 @@ class DeviceController extends Controller
         // Collect end times and transaction info for in-use devices
         $timers = [];
         $customers = [];
+        $postpaidTransactions = [];
+        
         foreach ($devices as $dev) {
             if ($dev->status === 'Digunakan') {
                 $transaction = Transaction::where('device_id', $dev->id)
                     ->whereDate('created_at', $today)
                     ->latest()
                     ->first();
-                if ($transaction && $transaction->waktu_Selesai) {
-                    $timers[$dev->id] = $transaction->waktu_Selesai;
+                    
+                if ($transaction) {
+                    // For prepaid transactions
+                    if ($transaction->tipe_transaksi === 'prepaid' && $transaction->waktu_Selesai) {
+                        $timers[$dev->id] = $transaction->waktu_Selesai;
+                    }
+                    // For postpaid transactions that are still running
+                    elseif ($transaction->tipe_transaksi === 'postpaid' && $transaction->status_transaksi === 'berjalan') {
+                        $postpaidTransactions[$dev->id] = [
+                            'start_time' => $transaction->waktu_mulai,
+                            'start_date' => $transaction->created_at->format('Y-m-d')
+                        ];
+                    }
+                    
                     $customers[$dev->id] = [
                         'id_transaksi' => $transaction->id,
                         'nama' => $transaction->nama ?? 'Tidak tersedia',
@@ -84,7 +98,9 @@ class DeviceController extends Controller
                         'waktu_mulai' => $transaction->waktu_mulai,
                         'waktu_selesai' => $transaction->waktu_Selesai,
                         'total' => $transaction->total ?? 'Tidak tersedia',
-                        'tanggal' => $transaction->created_at->format('Y-m-d')
+                        'tanggal' => $transaction->created_at->format('Y-m-d'),
+                        'tipe_transaksi' => $transaction->tipe_transaksi,
+                        'status_transaksi' => $transaction->status_transaksi
                     ];
                 }
             }

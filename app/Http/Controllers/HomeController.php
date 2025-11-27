@@ -59,7 +59,12 @@ class HomeController extends Controller
             $devices = Device::where('playstation_id', $playstation->id)->get();
             $sumRevenue = 0;
             foreach ($devices as $device) {
-                $sumRevenue += Transaction::where('status_transaksi', 'sukses')->where('device_id', $device->id)->sum('total');
+                $sumRevenue += Transaction::where('device_id', $device->id)
+                ->where(function($query) {
+                    $query->where('status_transaksi', 'sukses')
+                          ->orWhere('payment_status', 'paid');
+                })
+                ->sum('total');
             }
             $percent = $revenue > 0 ? ($sumRevenue / $revenue) * 100 : 0;
             $labels[] = $playstation->nama . ' (' . round($percent, 1) . '%)';
@@ -84,8 +89,16 @@ class HomeController extends Controller
     public function areaCartData()
     {
         $totals = [];
+        $currentYear = date('Y');
+        
         for ($bulan = 1; $bulan <= 12; $bulan++) {
-            $total = Transaction::whereMonth('created_at', $bulan)->where('status_transaksi', 'sukses')->sum('total');
+            $total = Transaction::whereYear('created_at', $currentYear)
+                ->whereMonth('created_at', $bulan)
+                ->where(function($query) {
+                    $query->where('status_transaksi', 'sukses')
+                          ->orWhere('payment_status', 'paid');
+                })
+                ->sum('total');
             $totals[] = $total;
         }
 

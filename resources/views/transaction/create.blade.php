@@ -162,8 +162,8 @@
                             @enderror
                         </div>
                         <div class="col-md-4 d-flex align-items-end">
-                            <div class="d-flex gap-2">
-                                <button class="btn btn-success flex-fill" type="submit" name="action" value="bayar">Bayar</button>
+                            <div class="d-flex gap-2 w-100">
+                                <button id="bayarBtn" class="btn btn-success flex-fill" type="submit" name="action" value="bayar">Bayar</button>
                                 <button class="btn btn-primary flex-fill" type="submit" name="action" value="simpan">Simpan Transaksi</button>
                             </div>
                         </div>
@@ -198,6 +198,17 @@
             const waktuSelesaiRow = document.querySelector('.row.mb-2:has(#waktu_Selesai)');
             const totalPsRow = document.querySelector('.row.mb-2:has(#total_ps)');
             const jamMainInput = document.getElementById('jam_main');
+            const bayarBtn = document.getElementById('bayarBtn');
+            
+            // Show/hide Bayar button based on transaction type
+            if (bayarBtn) {
+                bayarBtn.style.display = isPrepaid ? 'block' : 'none';
+                // Adjust the width of Simpan button when Bayar is hidden
+                const simpanBtn = document.querySelector('button[value="simpan"]');
+                if (simpanBtn) {
+                    simpanBtn.style.flex = isPrepaid ? '1' : '0 0 100%';
+                }
+            }
 
             if (isPrepaid) {
                 if (jamMainRow) jamMainRow.style.display = 'flex';

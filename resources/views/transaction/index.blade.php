@@ -114,7 +114,7 @@
                         <th scope="col">Tanggal</th>
                         <th scope="col">Status Transaksi</th>
                         <th scope="col">Status Pembayaran</th>
-                        <th scope="col">Timer</th>
+                       
 
                         @if (auth()->user()->status === 'admin')
                             <th scope="col">Action</th>
@@ -146,25 +146,7 @@
                             <td>{{ $transaksi->created_at }}</td>
                             <td>{{ ucfirst($transaksi->status_transaksi) }}</td>
                             <td>{{ ucfirst($transaksi->payment_status) }}</td>
-                            <td>
-                                @if($transaksi->tipe_transaksi === 'postpaid' && $transaksi->status_transaksi === 'berjalan')
-                                    <div class="timer" data-start="{{ $transaksi->created_at->toDateString() }} {{ $transaksi->waktu_mulai }}" data-transaction-id="{{ $transaksi->id }}">
-                                        <span class="timer-display">Lama Main: 00:00:00 (0 jam 0 menit)</span>
-                                    </div>
-                                @elseif($transaksi->tipe_transaksi === 'postpaid' && $transaksi->status_transaksi === 'selesai')
-                                    @php
-                                        $startTime = \Carbon\Carbon::parse($transaksi->created_at->toDateString() . ' ' . $transaksi->waktu_mulai);
-                                        $endTime = \Carbon\Carbon::parse($transaksi->created_at->toDateString() . ' ' . $transaksi->waktu_Selesai);
-                                        $duration = $startTime->diff($endTime);
-                                        $hours = $duration->h;
-                                        $minutes = $duration->i;
-                                        $seconds = $duration->s;
-                                    @endphp
-                                    Lama Main: {{ str_pad($hours, 2, '0', STR_PAD_LEFT) }}:{{ str_pad($minutes, 2, '0', STR_PAD_LEFT) }}:{{ str_pad($seconds, 2, '0', STR_PAD_LEFT) }} ({{ $hours }} jam {{ $minutes }} menit)
-                                @else
-                                    -
-                                @endif
-                            </td>
+
 
                             @if (auth()->user()->status === 'admin' && $transaksi->device)
                                 <td>

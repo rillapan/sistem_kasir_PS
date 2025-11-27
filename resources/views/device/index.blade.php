@@ -91,8 +91,18 @@
                 {{ ucfirst($device->status) }}
             @endif
         </td>
-        @if ($device->status === 'Digunakan' && isset($timers[$device->id]))
-            <td id="timer-{{ $device->id }}">Memuat...</td>
+        @if ($device->status === 'Digunakan' && isset($customers[$device->id]))
+            @if ($customers[$device->id]['tipe_transaksi'] === 'prepaid' && isset($timers[$device->id]))
+                <td id="timer-{{ $device->id }}" data-type="prepaid">Memuat...</td>
+            @elseif($customers[$device->id]['tipe_transaksi'] === 'postpaid' && $customers[$device->id]['status_transaksi'] === 'berjalan')
+                <td id="timer-{{ $device->id }}" data-type="postpaid" 
+                    data-start-time="{{ $customers[$device->id]['waktu_mulai'] }}"
+                    data-start-date="{{ $customers[$device->id]['tanggal'] }}">
+                    <span id="elapsed-time-{{ $device->id }}">00:00:00</span>
+                </td>
+            @else
+                <td>-</td>
+            @endif
         @else
             <td>-</td>
         @endif
@@ -113,12 +123,21 @@
             @endif
 
                             @if (auth()->user()->status === 'admin')
-                                <a href="/device/{{ $device->id }}/edit"><i class="fas fa-edit"></i></a>
+                                @if (isset($customers[$device->id]) && $customers[$device->id]['tipe_transaksi'] === 'postpaid' && $customers[$device->id]['status_transaksi'] === 'berjalan')
+                                    <form action="{{ route('transaction.end', $customers[$device->id]['id_transaksi']) }}" method="POST" class="d-inline">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Apakah Anda yakin ingin menyelesaikan transaksi ini?')">
+                                            <i class="fas fa-check"></i> Selesai
+                                        </button>
+                                    </form>
+                                @endif
+                                <a href="/device/{{ $device->id }}/edit" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i></a>
                                 <form action="/device/{{ $device->id }}" method="post" class="d-inline">
                                     @method('delete')
                                     @csrf
-                                    <button class="border-0 bg-white" onclick="return confirm('Are you sure?')"><i
-                                            class="fas fa-trash-alt text-danger"></i></button>
+                                    <button class="btn btn-sm btn-danger" onclick="return confirm('Apakah Anda yakin ingin menghapus perangkat ini?')">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
                                 </form>
                                 </td>
                             @else
@@ -159,11 +178,13 @@
     </div>
     </div>
     <script>
-        function updateTimer(deviceId, endTimeStr) {
+        // Function to update prepaid timer
+        function updatePrepaidTimer(deviceId, endTimeStr) {
             let [h, m, s] = endTimeStr.split(':').map(Number);
             let endTime = new Date();
             endTime.setHours(h, m, s, 0);
             let now = new Date();
+            
             if (endTime <= now) {
                 let timerTd = document.getElementById('timer-' + deviceId);
                 if (timerTd) {
@@ -171,6 +192,7 @@
                 }
                 return;
             }
+            
             function tick() {
                 let diffMs = endTime.getTime() - new Date().getTime();
                 if (diffMs <= 0) {
@@ -199,17 +221,58 @@
                 let ss = (diffSec % 60).toString().padStart(2, '0');
                 let timerTd = document.getElementById('timer-' + deviceId);
                 if (timerTd) {
-                    timerTd.innerHTML = hh + ':' + mm + ':' + ss;
+                    timerTd.innerHTML = `${hh}:${mm}:${ss}`;
                 }
                 setTimeout(tick, 1000);
             }
             tick();
         }
-        @if (isset($timers))
-            @foreach ($timers as $id => $time)
-                updateTimer({{ $id }}, '{{ $time }}');
+
+        // Function to update postpaid timer (elapsed time)
+        function updatePostpaidTimer(deviceId, startDate, startTime) {
+            const startDateTime = new Date(`${startDate} ${startTime}`);
+            
+            function updateElapsedTime() {
+                const now = new Date();
+                const diffMs = now - startDateTime;
+                
+                if (diffMs < 0) {
+                    // If the start time is in the future, show 00:00:00
+                    document.getElementById(`elapsed-time-${deviceId}`).textContent = '00:00:00';
+                } else {
+                    // Calculate hours, minutes, seconds
+                    const totalSeconds = Math.floor(diffMs / 1000);
+                    const hours = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
+                    const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
+                    const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+                    
+                    document.getElementById(`elapsed-time-${deviceId}`).textContent = `${hours}:${minutes}:${seconds}`;
+                }
+                
+                requestAnimationFrame(updateElapsedTime);
+            }
+            
+            updateElapsedTime();
+        }
+
+        // Initialize timers when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize prepaid timers
+            @foreach($timers as $deviceId => $endTime)
+                updatePrepaidTimer({{ $deviceId }}, '{{ $endTime }}');
             @endforeach
-        @endif
+            
+            // Initialize postpaid timers
+            document.querySelectorAll('[data-type="postpaid"]').forEach(timerElement => {
+                const deviceId = timerElement.id.replace('timer-', '');
+                const startTime = timerElement.dataset.startTime;
+                const startDate = timerElement.dataset.startDate;
+                
+                if (startTime && startDate) {
+                    updatePostpaidTimer(deviceId, startDate, startTime);
+                }
+            });
+        });
 
         // Modal population script
         var customerModal = document.getElementById('customerModal');

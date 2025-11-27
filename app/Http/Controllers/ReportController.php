@@ -15,17 +15,26 @@ class ReportController extends Controller
     {
         $now = Carbon::now();
 
-        // Default incomes
-        $dailyIncome = Transaction::where('status_transaksi', 'sukses')
+        // Default incomes - include both 'sukses' status and 'paid' payment_status
+        $dailyIncome = Transaction::where(function($query) {
+                $query->where('status_transaksi', 'sukses')
+                      ->orWhere('payment_status', 'paid');
+            })
             ->whereDate('created_at', $now->toDateString())
             ->sum('total');
 
-        $monthlyIncome = Transaction::where('status_transaksi', 'sukses')
+        $monthlyIncome = Transaction::where(function($query) {
+                $query->where('status_transaksi', 'sukses')
+                      ->orWhere('payment_status', 'paid');
+            })
             ->whereYear('created_at', $now->year)
             ->whereMonth('created_at', $now->month)
             ->sum('total');
 
-        $yearlyIncome = Transaction::where('status_transaksi', 'sukses')
+        $yearlyIncome = Transaction::where(function($query) {
+                $query->where('status_transaksi', 'sukses')
+                      ->orWhere('payment_status', 'paid');
+            })
             ->whereYear('created_at', $now->year)
             ->sum('total');
 
@@ -40,7 +49,10 @@ class ReportController extends Controller
             $start = Carbon::parse($startDate);
             $end = Carbon::parse($endDate)->endOfDay();
 
-            $periodTransactions = Transaction::where('status_transaksi', 'sukses')
+            $periodTransactions = Transaction::where(function($query) {
+                    $query->where('status_transaksi', 'sukses')
+                          ->orWhere('payment_status', 'paid');
+                })
                 ->whereBetween('created_at', [$start, $end])
                 ->get();
 
