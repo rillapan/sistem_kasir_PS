@@ -27,6 +27,7 @@ Route::resource('/transaction', App\Http\Controllers\TransactionController::clas
 Route::get('/transaction/{id}/payment', [App\Http\Controllers\TransactionController::class, 'showPayment'])->name('transaction.showPayment')->middleware('auth');
 Route::post('/transaction/{id}/process-payment', [App\Http\Controllers\TransactionController::class, 'processPayment'])->name('transaction.processPayment')->middleware('auth');
 Route::resource('/device', App\Http\Controllers\DeviceController::class)->middleware('auth');
+Route::get('/device/by-playstation/{id}', [App\Http\Controllers\DeviceController::class, 'byPlaystation'])->name('device.byPlaystation')->middleware('auth');
 
 Route::put('/transaction/{id}/update', 'App\Http\Controllers\TransactionController@updateStatus')->middleware('auth');
 Route::post('/transaction/{id}/end', 'App\Http\Controllers\TransactionController@endTransaction')->middleware('auth')->name('transaction.end');
@@ -48,6 +49,9 @@ Route::get('/chart-area-data', 'App\Http\Controllers\HomeController@areaCartData
 Route::get('/fnb/laporan-penjualan', [App\Http\Controllers\FnbController::class, 'laporanPenjualan'])->name('fnb.laporan');
 Route::get('/fnb/laporan-penjualan/excel', [App\Http\Controllers\FnbController::class, 'exportExcel'])->name('fnb.laporan.excel');
 Route::get('/fnb/laporan-penjualan/pdf', [App\Http\Controllers\FnbController::class, 'exportPdf'])->name('fnb.laporan.pdf');
+
+// Panduan Route
+Route::get('/panduan', [App\Http\Controllers\PanduanController::class, 'index'])->name('panduan.index');
 Route::resource('/fnb', App\Http\Controllers\FnbController::class)->middleware('auth');
 
 Route::get('/stock', [App\Http\Controllers\StockController::class, 'index'])->middleware('auth')->name('stock.index');

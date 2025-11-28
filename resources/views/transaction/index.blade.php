@@ -23,7 +23,7 @@
             <div class="card border-left-primary shadow h-100 py-2">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
-                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Postpaid Transactions</div>
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Lost Time Transactions</div>
                         <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $postpaidCount }}</div>
                     </div>
                     <div>
@@ -36,7 +36,7 @@
             <div class="card border-left-success shadow h-100 py-2">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
-                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Prepaid Transactions</div>
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Paket Transactions</div>
                         <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $prepaidCount }}</div>
                     </div>
                     <div>
@@ -81,8 +81,8 @@
                     <form method="GET" action="{{ route('transaction.index') }}" class="d-flex mr-2">
                         <select name="type" class="form-control form-control-sm mr-2">
                             <option value="all" {{ $currentType == 'all' ? 'selected' : '' }}>Semua</option>
-                            <option value="prepaid" {{ $currentType == 'prepaid' ? 'selected' : '' }}>Prepaid</option>
-                            <option value="postpaid" {{ $currentType == 'postpaid' ? 'selected' : '' }}>Postpaid</option>
+                            <option value="prepaid" {{ $currentType == 'prepaid' ? 'selected' : '' }}>Paket</option>
+                            <option value="postpaid" {{ $currentType == 'postpaid' ? 'selected' : '' }}>Lost Time</option>
                         </select>
                         <button type="submit" class="btn btn-primary btn-sm">Filter</button>
                     </form>
@@ -128,7 +128,7 @@
                             <td>{{ $transaksi->nama }}</td>
                             <td>{{ $transaksi->device ? $transaksi->device->nama : 'N/A' }}</td>
                             <td>{{ $transaksi->device && $transaksi->device->playstation ? $transaksi->device->playstation->nama : 'N/A' }}</td>
-                            <td>{{ ucfirst($transaksi->tipe_transaksi) }}</td>
+                            <td>{{ $transaksi->tipe_transaksi === 'prepaid' ? 'Paket' : 'Lost Time' }}</td>
                             <td>{{ $transaksi->jam_main ? $transaksi->jam_main . ' Jam' : '-' }}</td>
                             <td>{{ $transaksi->waktu_mulai }}</td>
                             <td>{{ $transaksi->waktu_Selesai ?: '-' }}</td>

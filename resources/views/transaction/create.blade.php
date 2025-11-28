@@ -26,13 +26,13 @@
                             <div class="form-check form-check-inline">
                                 <input class="form-check-input" type="radio" name="tipe_transaksi" id="prepaid" value="prepaid" checked onchange="toggleFields()">
                                 <label class="form-check-label" for="prepaid">
-                                    Prepaid
+                                    Paket
                                 </label>
                             </div>
                             <div class="form-check form-check-inline">
                                 <input class="form-check-input" type="radio" name="tipe_transaksi" id="postpaid" value="postpaid" onchange="toggleFields()">
                                 <label class="form-check-label" for="postpaid">
-                                    Postpaid
+                                    Lost Time
                                 </label>
                             </div>
                         </div>

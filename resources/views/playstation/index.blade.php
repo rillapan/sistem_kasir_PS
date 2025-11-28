@@ -55,13 +55,19 @@
                             </td>
                             <td>{{ $play->nama }}</td>
                             <td>{{ 'Rp ' . number_format($play->harga, 0, ',', '.') }}</td>
-                            <td>
-                                <a href="/playstation/{{ $play->id }}/edit"><i class="fas fa-edit"></i></a>
+                            <td class="d-flex">
+                                <a href="/playstation/{{ $play->id }}/edit" class="btn btn-sm btn-info mr-1" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{{ route('device.byPlaystation', $play->id) }}" class="btn btn-sm btn-primary mr-1" title="View Devices">
+                                    <i class="fas fa-tv"></i>
+                                </a>
                                 <form action="/playstation/{{ $play->id }}" method="post" class="d-inline">
                                     @method('delete')
                                     @csrf
-                                    <button class="border-0 bg-white" onclick="return confirm('Are you sure?')"><i
-                                            class="fas fa-trash-alt text-danger"></i></button>
+                                    <button class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')" title="Delete">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
                                 </form>
                             </td>
                         </tr>

@@ -92,6 +92,18 @@
     <!-- Divider -->
     <hr class="sidebar-divider d-none d-md-block">
 
+    <hr class="sidebar-divider">
+
+<!-- Panduan -->
+<div class="sidebar-heading">Panduan</div>
+
+<li class="nav-item {{ $active === 'panduan' ? 'active' : '' }}">
+    <a class="nav-link" href="{{ route('panduan.index') }}">
+        <i class="fas fa-book"></i>
+        <span>Panduan</span>
+    </a>
+</li>
+
     <!-- Sidebar Toggler (Sidebar) -->
     <div class="text-center d-none d-md-inline">
         <button class="rounded-circle border-0" id="sidebarToggle"></button>

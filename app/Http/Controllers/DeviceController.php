@@ -13,6 +13,24 @@ use Illuminate\Support\Facades\DB;
 class DeviceController extends Controller
 {
     /**
+     * Display devices by playstation type.
+     *
+     * @param  int  $playstationId
+     * @return \Illuminate\Http\Response
+     */
+    public function byPlaystation($playstationId)
+    {
+        $playstation = Playstation::findOrFail($playstationId);
+        $devices = Device::where('playstation_id', $playstationId)
+            ->with('playstation')
+            ->paginate(10);
+
+        $title = 'Devices - ' . $playstation->nama;
+        $active = 'device'; // This will highlight the 'Data Perangkat' menu in the sidebar
+        
+        return view('device.by_playstation', compact('devices', 'title', 'playstation', 'active'));
+    }
+    /**
      * Display a listing of the resource.
      *
      * @return \Illuminate\Http\Response

@@ -33,13 +33,23 @@ class HomeController extends Controller
         $play = Playstation::count();
         $transaction = Transaction::count();
         $revenue = Transaction::sum('total');
+        
+        // Calculate today's revenue
+        $todayRevenue = Transaction::whereDate('created_at', today())
+            ->where(function($query) {
+                $query->where('status_transaksi', 'sukses')
+                      ->orWhere('payment_status', 'paid');
+            })
+            ->sum('total');
+            
         return view('home', [
             'title' => 'Dashboard',
             'active' => 'dashboard',
             'member' => $member,
             'play' => $play,
             'transaksi' => $transaction,
-            'pendapatan' => $revenue
+            'pendapatan' => $revenue,
+            'today_pendapatan' => $todayRevenue
         ]);
     }
 
@@ -47,28 +57,30 @@ class HomeController extends Controller
 
     public function pieCartData2()
     {
-        $playstations = Playstation::all();
+        $playstations = Playstation::with(['device.transaction' => function($query) {
+            $query->where('status_transaksi', 'sukses')
+                  ->orWhere('payment_status', 'paid');
+        }])
+        ->whereHas('device.transaction', function($query) {
+            $query->where('status_transaksi', 'sukses')
+                  ->orWhere('payment_status', 'paid');
+        })
+        ->get();
+        
         $totalRevenue = [];
         $labels = [];
-        $backgroundColors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796']; // Add more colors if needed
+        $backgroundColors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796'];
         $hoverBackgroundColors = ['#2e59d9', '#17a673', '#2c9faf', '#dda20a', '#be2617', '#6c757d'];
 
-        $revenue = Transaction::sum('total');
-
         foreach ($playstations as $index => $playstation) {
-            $devices = Device::where('playstation_id', $playstation->id)->get();
-            $sumRevenue = 0;
-            foreach ($devices as $device) {
-                $sumRevenue += Transaction::where('device_id', $device->id)
-                ->where(function($query) {
-                    $query->where('status_transaksi', 'sukses')
-                          ->orWhere('payment_status', 'paid');
-                })
-                ->sum('total');
+            $sumRevenue = $playstation->device->sum(function($device) {
+                return $device->transaction->sum('total');
+            });
+            
+            if ($sumRevenue > 0) {
+                $labels[] = $playstation->nama . ' (' . number_format($sumRevenue, 0, ',', '.') . ')';
+                $totalRevenue[] = $sumRevenue;
             }
-            $percent = $revenue > 0 ? ($sumRevenue / $revenue) * 100 : 0;
-            $labels[] = $playstation->nama . ' (' . round($percent, 1) . '%)';
-            $totalRevenue[] = $sumRevenue;
         }
 
         $chartData = [
@@ -76,14 +88,44 @@ class HomeController extends Controller
             'datasets' => [
                 [
                     'data' => $totalRevenue,
-                    'backgroundColor' => array_slice($backgroundColors, 0, count($playstations)),
-                    'hoverBackgroundColor' => array_slice($hoverBackgroundColors, 0, count($playstations)),
+                    'backgroundColor' => array_slice($backgroundColors, 0, count($labels)),
+                    'hoverBackgroundColor' => array_slice($hoverBackgroundColors, 0, count($labels)),
                     'hoverBorderColor' => "rgba(234, 236, 244, 1)",
                 ]
             ]
         ];
 
         return $chartData;
+    }
+    
+    public function popularFnbs()
+    {
+        $popularFnbs = \App\Models\TransactionFnb::selectRaw('fnbs.nama, SUM(transaction_fnbs.qty) as total_qty')
+            ->join('fnbs', 'fnbs.id', '=', 'transaction_fnbs.fnb_id')
+            ->join('transactions', 'transactions.id', '=', 'transaction_fnbs.transaction_id')
+            ->where(function($query) {
+                $query->where('transactions.status_transaksi', 'sukses')
+                      ->orWhere('transactions.payment_status', 'paid');
+            })
+            ->groupBy('fnbs.id', 'fnbs.nama')
+            ->orderBy('total_qty', 'DESC')
+            ->limit(5)
+            ->get();
+            
+        // If no data, return empty arrays for chart
+        if ($popularFnbs->isEmpty()) {
+            return [
+                'labels' => [],
+                'data' => []
+            ];
+        }
+        
+        return [
+            'labels' => $popularFnbs->pluck('nama')->toArray(),
+            'data' => $popularFnbs->pluck('total_qty')->map(function($item) {
+                return (int)$item;
+            })->toArray()
+        ];
     }
 
     public function areaCartData()

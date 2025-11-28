@@ -4,18 +4,80 @@
         <i class="fa fa-bars"></i>
     </button>
 
-    <!-- Topbar Search -->
-    <form class="d-none d-sm-inline-block form-inline mr-auto ml-md-3 my-2 my-md-0 mw-100 navbar-search">
-        <div class="input-group">
-            <input type="text" class="form-control bg-light border-0 small" placeholder="Search for..."
-                aria-label="Search" aria-describedby="basic-addon2" />
-            <div class="input-group-append">
-                <button class="btn btn-primary" type="button">
-                    <i class="fas fa-search fa-sm"></i>
-                </button>
+    <!-- WIB Time Display -->
+    <div class="d-none d-sm-flex align-items-center mr-4">
+        <div class="text-center" style="min-width: 220px;">
+            <div id="wib-time" style="
+                font-family: 'Roboto Mono', 'Courier New', monospace, sans-serif;
+                font-size: 1.4rem;
+                font-weight: 600;
+                color: #2c3e50;
+                letter-spacing: 1px;
+                line-height: 1.2;
+                text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            ">
+                --. --. --
+            </div>
+            <div id="wib-date" style="
+                font-family: 'Poppins', sans-serif;
+                font-size: 0.85rem;
+                color: #6c757d;
+                margin-top: 2px;
+                letter-spacing: 0.5px;
+            ">
+                Loading...
             </div>
         </div>
-    </form>
+        <div class="vr mx-3" style="height: 30px; opacity: 0.3;"></div>
+    </div>
+
+    <script>
+        function formatWIBTime(date) {
+            const options = { 
+                timeZone: 'Asia/Jakarta',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false,
+                hourCycle: 'h23'
+            };
+            
+            const dateOptions = {
+                timeZone: 'Asia/Jakarta',
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            };
+            
+            // Format time as HH.MM.SS
+            let timeStr = date.toLocaleTimeString('id-ID', options)
+                .split(':')
+                .map(part => part.padStart(2, '0'))
+                .join('.');
+            
+            // Format date as "Hari, DD Month YYYY"
+            const dateStr = date.toLocaleDateString('id-ID', dateOptions);
+                
+            return { time: timeStr, date: dateStr };
+        }
+        
+        function updateWIBTime() {
+            const now = new Date();
+            const wib = formatWIBTime(now);
+            
+            // Update time display
+            document.getElementById('wib-time').textContent = wib.time;
+            document.getElementById('wib-date').textContent = wib.date;
+        }
+        
+        // Update time immediately and then every second
+        updateWIBTime();
+        setInterval(updateWIBTime, 1000);
+    </script>
+    
+    <!-- Add Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;600&family=Poppins:wght@400;500&display=swap" rel="stylesheet">
 
     <!-- Topbar Navbar -->
     <ul class="navbar-nav ml-auto">

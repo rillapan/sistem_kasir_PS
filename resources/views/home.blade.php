@@ -62,10 +62,10 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Total Pendapatan
+                                Total Pendapatan Hari Ini
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {{ 'Rp ' . number_format($pendapatan, 0, ',', '.') }}
+                                {{ 'Rp ' . number_format($today_pendapatan, 0, ',', '.') }}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -92,16 +92,6 @@
                             data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                             <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
                         </a>
-                        <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in"
-                            aria-labelledby="dropdownMenuLink">
-                            <div class="dropdown-header">
-                                Dropdown Header:
-                            </div>
-                            <a class="dropdown-item" href="#">Action</a>
-                            <a class="dropdown-item" href="#">Another action</a>
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="#">Something else here</a>
-                        </div>
                     </div>
                 </div>
                 <!-- Card Body -->
@@ -121,22 +111,6 @@
                     <h6 class="m-0 font-weight-bold text-primary">
                         Grafik Pendapatan Berdasarakan Jenis Playstation
                     </h6>
-                    <div class="dropdown no-arrow">
-                        <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink"
-                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
-                        </a>
-                        <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in"
-                            aria-labelledby="dropdownMenuLink">
-                            <div class="dropdown-header">
-                                Dropdown Header:
-                            </div>
-                            <a class="dropdown-item" href="#">Action</a>
-                            <a class="dropdown-item" href="#">Another action</a>
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="#">Something else here</a>
-                        </div>
-                    </div>
                 </div>
                 <!-- Card Body -->
                 <div class="card-body">
@@ -148,6 +122,140 @@
                     </div>
                 </div>
             </div>
+            
+           
         </div>
     </div>
+@push('scripts')
+<!-- Page level plugins -->
+<script src="vendor/chart.js/Chart.min.js"></script>
+
+<script>
+    // Pie Chart for PlayStation Revenue
+    var ctx = document.getElementById("myPieChart2");
+    var myPieChart2 = new Chart(ctx, {
+        type: 'doughnut',
+        data: {!! json_encode(app('App\Http\Controllers\HomeController')->pieCartData2()) !!},
+        options: {
+            maintainAspectRatio: false,
+            tooltips: {
+                backgroundColor: "rgb(255,255,255)",
+                bodyFontColor: "#858796",
+                borderColor: '#dddfeb',
+                borderWidth: 1,
+                xPadding: 15,
+                yPadding: 15,
+                displayColors: false,
+                caretPadding: 10,
+                callbacks: {
+                    label: function(tooltipItem, data) {
+                        var label = data.labels[tooltipItem.index] || '';
+                        if (label) {
+                            label += ': ';
+                        }
+                        label += 'Rp ' + data.datasets[0].data[tooltipItem.index].toLocaleString('id-ID');
+                        return label;
+                    }
+                }
+            },
+            legend: {
+                display: false
+            },
+            cutoutPercentage: 60,
+        },
+    });
+
+    // Bar Chart for Popular FnB
+    var fnbData = {!! json_encode(app('App\Http\Controllers\HomeController')->popularFnbs()) !!};
+    var fnbLabels = fnbData.labels || [];
+    var fnbValues = fnbData.data || [];
+
+    if (fnbLabels.length > 0 && fnbValues.length > 0) {
+        var ctx2 = document.getElementById("fnbChart");
+        if (ctx2) {
+            var fnbChart = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: fnbLabels,
+                    datasets: [{
+                        label: 'Jumlah Terjual',
+                        data: fnbValues,
+                        backgroundColor: '#4e73df',
+                        hoverBackgroundColor: '#2e59d9',
+                        borderColor: '#4e73df',
+                    }],
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            left: 10,
+                            right: 25,
+                            top: 25,
+                            bottom: 0
+                        }
+                    },
+                    scales: {
+                        xAxes: [{
+                            gridLines: {
+                                display: false,
+                                drawBorder: false
+                            },
+                            ticks: {
+                                maxTicksLimit: 6
+                            },
+                            maxBarThickness: 25,
+                        }],
+                        yAxes: [{
+                            ticks: {
+                                beginAtZero: true,
+                                stepSize: 1,
+                                userCallback: function(value) {
+                                    return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                                }
+                            },
+                            gridLines: {
+                                color: "rgb(234, 236, 244)",
+                                zeroLineColor: "rgb(234, 236, 244)",
+                                drawBorder: false,
+                                borderDash: [2],
+                                zeroLineBorderDash: [2]
+                            }
+                        }],
+                    },
+                    legend: {
+                        display: false
+                    },
+                    tooltips: {
+                        titleMarginBottom: 10,
+                        titleFontColor: '#6e707e',
+                        titleFontSize: 14,
+                        backgroundColor: "rgb(255,255,255)",
+                        bodyFontColor: "#858796",
+                        borderColor: '#dddfeb',
+                        borderWidth: 1,
+                        xPadding: 15,
+                        yPadding: 15,
+                        displayColors: false,
+                        caretPadding: 10,
+                        callbacks: {
+                            label: function(tooltipItem, chart) {
+                                var datasetLabel = chart.datasets[tooltipItem.datasetIndex].label || '';
+                                return datasetLabel + ': ' + tooltipItem.yLabel + ' pcs';
+                            }
+                        }
+                    },
+                }
+            });
+        }
+    } else {
+        // Hide the chart container if no data
+        var chartContainer = document.querySelector('#fnbChart').closest('.card');
+        if (chartContainer) {
+            chartContainer.style.display = 'none';
+        }
+    }
+</script>
+@endpush
+
 @endsection

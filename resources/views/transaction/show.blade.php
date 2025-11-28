@@ -42,14 +42,7 @@
                                     <td><strong>Tipe Transaksi:</strong></td>
                                     <td>{{ ucfirst($transaction->tipe_transaksi) }}</td>
                                 </tr>
-                                <tr>
-                                    <td><strong>Status:</strong></td>
-                                    <td>
-                                        <span class="badge badge-{{ $transaction->status_transaksi === 'selesai' ? 'success' : ($transaction->status_transaksi === 'berjalan' ? 'warning' : 'secondary') }}">
-                                            {{ ucfirst($transaction->status_transaksi) }}
-                                        </span>
-                                    </td>
-                                </tr>
+                                
                                 <tr>
                                     <td><strong>Tanggal:</strong></td>
                                     <td>{{ $transaction->created_at->format('d/m/Y') }}</td>
@@ -67,10 +60,7 @@
                                     <td><strong>Jenis Playstation:</strong></td>
                                     <td>{{ $transaction->device && $transaction->device->playstation ? $transaction->device->playstation->nama : 'N/A' }}</td>
                                 </tr>
-                                <tr>
-                                    <td><strong>Status Perangkat:</strong></td>
-                                    <td>{{ $transaction->device ? ucfirst($transaction->device->status) : 'N/A' }}</td>
-                                </tr>
+                               
                             </table>
                         </div>
                     </div>
