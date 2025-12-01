@@ -4,7 +4,7 @@
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">{{ $title }}</h1>
         <a href="{{ route('playstation.index') }}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
-            <i class="fas fa-arrow-left fa-sm text-white-50"></i> Kembali ke Daftar Playstation
+            <i class="fas fa-arrow-left fa-sm text-white-50"></i> Kembali ke Daftar Jenis Playstation
         </a>
     </div>
 
@@ -17,7 +17,7 @@
                 <table class="table table-bordered" width="100%" cellspacing="0">
                     <thead>
                         <tr>
-                            <th>#</th>
+                            <th>No</th>
                             <th>Nama Perangkat</th>
                             <th>Status</th>
                             <th>Action</th>

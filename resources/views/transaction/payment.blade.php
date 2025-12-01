@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="container">
-    <h1 class="mb-4">Pembayaran Transaksi #{{ $transaction->id }}</h1>
+    <h1 class="mb-4">Pembayaran Transaksi #{{ $transaction->id_transaksi }}</h1>
 
     <div class="card mb-4">
         <div class="card-header">
@@ -15,7 +15,7 @@
                     <table class="table table-borderless">
                         <tr>
                             <td><strong>ID Transaksi:</strong></td>
-                            <td>{{ $transaction->id }}</td>
+                            <td>{{ $transaction->id_transaksi }}</td>
                         </tr>
                         <tr>
                             <td><strong>Nama:</strong></td>
@@ -23,16 +23,9 @@
                         </tr>
                         <tr>
                             <td><strong>Tipe Transaksi:</strong></td>
-                            <td>{{ ucfirst($transaction->tipe_transaksi) }}</td>
+                            <td>{{ $transaction->tipe_transaksi === 'prepaid' ? 'Paket' : 'Lost Time' }}</td>
                         </tr>
-                        <tr>
-                            <td><strong>Status:</strong></td>
-                            <td>
-                                <span class="badge badge-{{ $transaction->status_transaksi === 'selesai' ? 'success' : 'warning' }}">
-                                    {{ ucfirst($transaction->status_transaksi) }}
-                                </span>
-                            </td>
-                        </tr>
+                       
                         <tr>
                             <td><strong>Tanggal:</strong></td>
                             <td>{{ $transaction->created_at->format('d/m/Y') }}</td>
@@ -147,7 +140,7 @@
             <h5>Proses Pembayaran</h5>
         </div>
         <div class="card-body">
-            <form method="POST" action="{{ route('transaction.processPayment', $transaction->id) }}">
+            <form method="POST" action="{{ route('transaction.processPayment', ['id' => $transaction->id_transaksi]) }}">
                 @csrf
                 <div class="form-group mb-3">
                     <label for="amount_paid">Jumlah Uang Dibayar</label>

@@ -15,7 +15,7 @@
     @endif
 
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Detail Transaksi #{{ $transaction->id }}</h1>
+        <h1 class="h3 mb-0 text-gray-800">Detail Transaksi #{{ $transaction->id_transaksi }}</h1>
         <a href="{{ route('transaction.index') }}" class="btn btn-secondary">Kembali</a>
     </div>
 
@@ -32,7 +32,7 @@
                             <table class="table table-borderless">
                                 <tr>
                                     <td><strong>ID Transaksi:</strong></td>
-                                    <td>{{ $transaction->id }}</td>
+                                    <td>{{ $transaction->id_transaksi }}</td>
                                 </tr>
                                 <tr>
                                     <td><strong>Nama:</strong></td>
@@ -40,7 +40,7 @@
                                 </tr>
                                 <tr>
                                     <td><strong>Tipe Transaksi:</strong></td>
-                                    <td>{{ ucfirst($transaction->tipe_transaksi) }}</td>
+                                   <td>{{ $transaction->tipe_transaksi === 'prepaid' ? 'Paket' : 'Lost Time' }}</td>
                                 </tr>
                                 
                                 <tr>
@@ -96,7 +96,7 @@
                                     <tr>
                                         <td><strong>Durasi Saat Ini:</strong></td>
                                         <td>
-                                            <div class="timer" data-start="{{ $transaction->created_at->toDateString() }} {{ $transaction->waktu_mulai }}" data-transaction-id="{{ $transaction->id }}">
+                                            <div class="timer" data-start="{{ $transaction->created_at->toDateString() }} {{ $transaction->waktu_mulai }}" data-transaction-id="{{ $transaction->id_transaksi }}">
                                                 <span class="timer-display">Lama Main: 00:00:00 (0 jam 0 menit)</span>
                                             </div>
                                         </td>
@@ -163,12 +163,24 @@
                     @if($transaction->tipe_transaksi === 'postpaid' && $transaction->status_transaksi === 'berjalan')
                         <hr>
                         <div class="text-center">
-                            <form action="{{ route('transaction.end', $transaction->id) }}" method="post" class="d-inline">
+                            <form action="{{ route('transaction.end', $transaction->id_transaksi) }}" method="post" class="d-inline">
                                 @csrf
                                 <button type="submit" class="btn btn-danger btn-lg" onclick="return confirm('Apakah Anda yakin ingin mengakhiri transaksi ini?')">
                                     <i class="fas fa-stop"></i> STOP
                                 </button>
                             </form>
+                        </div>
+                    @endif
+                    
+                    @if($transaction->payment_status === 'unpaid' && $transaction->status_transaksi === 'selesai')
+                        <hr>
+                        <div class="text-center">
+                            <a href="{{ route('transaction.showPayment', $transaction->id_transaksi) }}" class="btn btn-success btn-lg">
+                                <i class="fas fa-credit-card"></i> BAYAR SEKARANG
+                            </a>
+                            <p class="mt-2 text-muted">
+                                Total yang harus dibayar: <strong>Rp {{ number_format($transaction->total, 0, ',', '.') }}</strong>
+                            </p>
                         </div>
                     @endif
                 </div>

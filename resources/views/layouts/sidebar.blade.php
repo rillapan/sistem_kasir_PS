@@ -32,7 +32,7 @@
         <li class="nav-item {{ $active === 'play' ? 'active' : '' }}">
             <a class="nav-link" href="{{ route('playstation.index') }}">
                 <i class="fas fa-gamepad"></i>
-                <span>Data Playstation</span></a>
+                <span>Jenis Playstation</span></a>
         </li>
     @endif
 
@@ -109,12 +109,5 @@
         <button class="rounded-circle border-0" id="sidebarToggle"></button>
     </div>
 
-
 </ul>
 <!-- End of Sidebar -->
-
-<!-- Content Wrapper -->
-<div id="content-wrapper" class="d-flex flex-column">
-
-    <!-- Main Content -->
-    <div id="content">

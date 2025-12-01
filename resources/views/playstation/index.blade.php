@@ -20,7 +20,7 @@
         <!-- Card Header - Dropdown -->
         <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
             <h6 class="m-0 font-weight-bold text-primary">
-                Data Playstation
+                Jenis Playstation
             </h6>
             <div class="dropdown no-arrow">
                 <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown"
@@ -34,7 +34,7 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th scope="col">#</th>
+                        <th scope="col">No</th>
                         <th scope="col">Gambar</th>
                         <th scope="col">Nama</th>
                         <th scope="col">Harga</th>
@@ -47,7 +47,7 @@
                             <th scope="row">
                                 {{ ($plays->currentpage() - 1) * $plays->perpage() + $loop->index + 1 }}</th>
                             <td>
-                                @if(Storage::disk('public')->exists($play->image))
+                                @if($play->image && Storage::disk('public')->exists($play->image))
                                     <img width="150px" src="{{ asset('storage/' . $play->image) }}" alt="Playstation Image">
                                 @else
                                     <img width="150px" src="{{ asset('img/undraw_rocket.svg') }}" alt="Placeholder Image">

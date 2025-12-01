@@ -31,6 +31,8 @@ Route::get('/device/by-playstation/{id}', [App\Http\Controllers\DeviceController
 
 Route::put('/transaction/{id}/update', 'App\Http\Controllers\TransactionController@updateStatus')->middleware('auth');
 Route::post('/transaction/{id}/end', 'App\Http\Controllers\TransactionController@endTransaction')->middleware('auth')->name('transaction.end');
+Route::get('/transaction/{id}/add-order', [App\Http\Controllers\TransactionController::class, 'addOrder'])->name('transaction.add-order');
+Route::post('/transaction/{id}/store-order', [App\Http\Controllers\TransactionController::class, 'storeOrder'])->name('transaction.store-order');
 Route::post('/device/{id}/update-status', 'App\Http\Controllers\DeviceController@updateStatusAjax')->middleware('auth');
 Route::get('/report', 'App\Http\Controllers\ReportController@index')->middleware('auth')->name('report');
 Route::get('/generate-pdf', 'App\Http\Controllers\ReportController@generatePDF')->middleware('auth');

@@ -32,14 +32,13 @@ class HomeController extends Controller
         $member = 0;
         $play = Playstation::count();
         $transaction = Transaction::count();
-        $revenue = Transaction::sum('total');
+        // Calculate total revenue from paid transactions only
+        $revenue = Transaction::where('payment_status', 'paid')
+            ->sum('total');
         
-        // Calculate today's revenue
+        // Calculate today's revenue from paid transactions only
         $todayRevenue = Transaction::whereDate('created_at', today())
-            ->where(function($query) {
-                $query->where('status_transaksi', 'sukses')
-                      ->orWhere('payment_status', 'paid');
-            })
+            ->where('payment_status', 'paid')
             ->sum('total');
             
         return view('home', [
@@ -102,7 +101,7 @@ class HomeController extends Controller
     {
         $popularFnbs = \App\Models\TransactionFnb::selectRaw('fnbs.nama, SUM(transaction_fnbs.qty) as total_qty')
             ->join('fnbs', 'fnbs.id', '=', 'transaction_fnbs.fnb_id')
-            ->join('transactions', 'transactions.id', '=', 'transaction_fnbs.transaction_id')
+            ->join('transactions', 'transactions.id_transaksi', '=', 'transaction_fnbs.transaction_id')
             ->where(function($query) {
                 $query->where('transactions.status_transaksi', 'sukses')
                       ->orWhere('transactions.payment_status', 'paid');

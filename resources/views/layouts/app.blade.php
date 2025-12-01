@@ -30,6 +30,8 @@
 
     <!-- Custom styles for this template-->
     <link href="{{ asset('css/sb-admin-2.min.css') }}" rel="stylesheet">
+    <!-- Custom styles -->
+    <link href="{{ asset('css/custom.css') }}" rel="stylesheet">
 </head>
 
 <body id="page-top">
@@ -37,13 +39,17 @@
         <!-- Sidebar -->
         @include('layouts/sidebar')
 
-        @include('layouts/navbar')
+        <!-- Content Wrapper -->
+        <div id="content">
+            @include('layouts/navbar')
 
-        <main class="py-4">
-            @yield('content')
-        </main>
+            <main class="py-4">
+                @yield('content')
+            </main>
 
-        @include('layouts/footer')
+            @include('layouts/footer')
+        </div>
+        <!-- End of Content Wrapper -->
     </div>
 
     @yield('scripts')

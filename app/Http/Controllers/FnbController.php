@@ -157,7 +157,7 @@ class FnbController extends Controller
         // Query aggregated sales data
         $salesData = DB::table('transaction_fnbs')
             ->join('fnbs', 'transaction_fnbs.fnb_id', '=', 'fnbs.id')
-            ->join('transactions', 'transaction_fnbs.transaction_id', '=', 'transactions.id')
+            ->join('transactions', 'transaction_fnbs.transaction_id', '=', 'transactions.id_transaksi')
             ->whereBetween('transactions.created_at', [$startDate, $endDate])
             ->select(
                 'fnbs.id',
@@ -191,7 +191,7 @@ class FnbController extends Controller
     private function getSalesOverTime($startDate, $endDate)
     {
         return DB::table('transaction_fnbs')
-            ->join('transactions', 'transaction_fnbs.transaction_id', '=', 'transactions.id')
+            ->join('transactions', 'transaction_fnbs.transaction_id', '=', 'transactions.id_transaksi')
             ->whereBetween('transactions.created_at', [$startDate, $endDate])
             ->select(
                 DB::raw('DATE(transactions.created_at) as date'),

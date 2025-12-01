@@ -108,7 +108,7 @@ class DeviceController extends Controller
                     }
                     
                     $customers[$dev->id] = [
-                        'id_transaksi' => $transaction->id,
+                        'id_transaksi' => $transaction->id_transaksi,
                         'nama' => $transaction->nama ?? 'Tidak tersedia',
                         'nama_perangkat' => $dev->nama,
                         'jenis_playstation' => $dev->playstation->nama ?? 'Tidak Diketahui',

@@ -9,21 +9,24 @@ class Transaction extends Model
 {
     use HasFactory;
 
-    protected $primaryKey = 'id';
+    protected $primaryKey = 'id_transaksi';
+    public $incrementing = true;
+    protected $keyType = 'int';
 
     protected $fillable = [
+        'status',
+        'member_id',
         'nama',
         'device_id',
         'user_id',
         'harga',
         'jam_main',
-        'total',
-        'status_transaksi',
         'waktu_mulai',
         'waktu_Selesai',
-        'status',
-        'tipe_transaksi',
+        'total',
+        'status_transaksi',
         'payment_status',
+        'tipe_transaksi'
     ];
 
     public function device()
@@ -38,7 +41,7 @@ class Transaction extends Model
 
     public function transactionFnbs()
     {
-        return $this->hasMany(TransactionFnb::class, 'transaction_id', 'id');
+        return $this->hasMany(TransactionFnb::class, 'transaction_id', 'id_transaksi');
     }
 
     public function getFnbTotalAttribute()

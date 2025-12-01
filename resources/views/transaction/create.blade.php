@@ -141,11 +141,13 @@
                     <!-- FnB Section - Compact Horizontal Layout -->
                     <div class="row mb-3">
                         <div class="col-12">
-                            <h6 class="text-primary mb-2">FnB Items (Opsional)</h6>
-                            <div id="fnb-container" class="border p-2" style="max-height: 150px; overflow-y: auto;">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="text-primary mb-0">FnB Items (Opsional)</h6>
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="addFnbItem()">+ Tambah FnB</button>
+                            </div>
+                            <div id="fnb-container" class="border rounded">
                                 <!-- FnB items will be added here -->
                             </div>
-                            <button type="button" class="btn btn-secondary btn-sm mt-1" onclick="addFnbItem()">+ Tambah FnB</button>
                         </div>
                     </div>
 
@@ -296,30 +298,32 @@
         function addFnbItem() {
             const container = document.getElementById('fnb-container');
             const itemDiv = document.createElement('div');
-            itemDiv.className = 'fnb-item border p-3 mb-3';
+            itemDiv.className = 'fnb-item border-bottom p-3';
             itemDiv.innerHTML = `
-                <div class="row">
+                <div class="row g-2 align-items-end">
                     <div class="col-md-4">
-                        <label>Barang</label>
-                        <select class="form-control fnb-select" name="fnb_ids[]" onchange="updateFnbPrice(this, ${fnbIndex})" required>
+                        <label class="form-label small mb-1">Barang</label>
+                        <select class="form-control form-control-sm fnb-select" name="fnb_ids[]" onchange="updateFnbPrice(this, ${fnbIndex})" required>
                             <option value="">Pilih Barang</option>
                             ${fnbs.map(fnb => `<option value="${fnb.id}" data-price="${fnb.harga_jual}" data-stock="${fnb.stok}">${fnb.nama} (Stok: ${fnb.stok})</option>`).join('')}
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <label>Qty</label>
-                        <input type="number" class="form-control fnb-qty" name="fnbs_qty[]" min="1" onchange="updateFnbTotal()" required>
+                        <label class="form-label small mb-1">Qty</label>
+                        <input type="number" class="form-control form-control-sm fnb-qty" name="fnbs_qty[]" min="1" value="1" onchange="updateFnbTotal()" required>
                     </div>
                     <div class="col-md-3">
-                        <label>Harga Jual</label>
-                        <input type="number" class="form-control fnb-price" name="fnbs_harga[]" readonly required>
+                        <label class="form-label small mb-1">Harga Jual</label>
+                        <input type="number" class="form-control form-control-sm fnb-price" name="fnbs_harga[]" readonly required>
                     </div>
                     <div class="col-md-2">
-                        <label>Total</label>
-                        <input type="number" class="form-control fnb-total" readonly>
+                        <label class="form-label small mb-1">Total</label>
+                        <input type="number" class="form-control form-control-sm fnb-total" readonly>
                     </div>
-                    <div class="col-md-1">
-                        <button type="button" class="btn btn-danger btn-sm mt-4" onclick="removeFnbItem(this)">Hapus</button>
+                    <div class="col-md-1 text-end">
+                        <button type="button" class="btn btn-danger btn-sm" onclick="removeFnbItem(this)">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </div>
                 </div>
             `;
@@ -359,8 +363,21 @@
         }
 
         function removeFnbItem(button) {
-            button.closest('.fnb-item').remove();
-            updateFnbTotal();
+            const item = button.closest('.fnb-item');
+            item.style.transition = 'opacity 0.3s';
+            item.style.opacity = '0';
+            
+            // Remove the item after the fade out animation
+            setTimeout(() => {
+                item.remove();
+                updateFnbTotal();
+                
+                // Remove the border from the last item if it's the only one
+                const items = document.querySelectorAll('.fnb-item');
+                if (items.length > 0) {
+                    items[items.length - 1].classList.remove('border-bottom');
+                }
+            }, 300);
         }
 
 

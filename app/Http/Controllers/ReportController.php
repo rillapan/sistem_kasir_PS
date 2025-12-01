@@ -15,26 +15,17 @@ class ReportController extends Controller
     {
         $now = Carbon::now();
 
-        // Default incomes - include both 'sukses' status and 'paid' payment_status
-        $dailyIncome = Transaction::where(function($query) {
-                $query->where('status_transaksi', 'sukses')
-                      ->orWhere('payment_status', 'paid');
-            })
+        // Only include paid transactions in income calculations
+        $dailyIncome = Transaction::where('payment_status', 'paid')
             ->whereDate('created_at', $now->toDateString())
             ->sum('total');
 
-        $monthlyIncome = Transaction::where(function($query) {
-                $query->where('status_transaksi', 'sukses')
-                      ->orWhere('payment_status', 'paid');
-            })
+        $monthlyIncome = Transaction::where('payment_status', 'paid')
             ->whereYear('created_at', $now->year)
             ->whereMonth('created_at', $now->month)
             ->sum('total');
 
-        $yearlyIncome = Transaction::where(function($query) {
-                $query->where('status_transaksi', 'sukses')
-                      ->orWhere('payment_status', 'paid');
-            })
+        $yearlyIncome = Transaction::where('payment_status', 'paid')
             ->whereYear('created_at', $now->year)
             ->sum('total');
 
@@ -49,10 +40,7 @@ class ReportController extends Controller
             $start = Carbon::parse($startDate);
             $end = Carbon::parse($endDate)->endOfDay();
 
-            $periodTransactions = Transaction::where(function($query) {
-                    $query->where('status_transaksi', 'sukses')
-                          ->orWhere('payment_status', 'paid');
-                })
+            $periodTransactions = Transaction::where('payment_status', 'paid')
                 ->whereBetween('created_at', [$start, $end])
                 ->get();
 
@@ -90,7 +78,7 @@ class ReportController extends Controller
         $end = Carbon::parse($endDate)->endOfDay();
 
         $transactions = Transaction::with('device.playstation')
-            ->where('status_transaksi', 'sukses')
+            ->where('payment_status', 'paid')
             ->whereBetween('created_at', [$start, $end])
             ->get();
         $total = $transactions->sum('total');
@@ -121,7 +109,7 @@ class ReportController extends Controller
         $end = Carbon::parse($endDate)->endOfDay();
 
         $transactions = Transaction::with('device.playstation')
-            ->where('status_transaksi', 'sukses')
+            ->where('payment_status', 'paid')
             ->whereBetween('created_at', [$start, $end])
             ->get();
         $total = $transactions->sum('total');

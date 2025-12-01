@@ -206,7 +206,7 @@ class TransactionController extends Controller
                     }
 
                     TransactionFnb::create([
-                        'transaction_id' => $transaction->id,
+                        'transaction_id' => $transaction->id_transaksi,
                         'fnb_id' => $fnb_id,
                         'qty' => $request->fnbs_qty[$index],
                         'harga_jual' => $request->fnbs_harga[$index] ?? $fnb->harga_jual
@@ -221,7 +221,7 @@ class TransactionController extends Controller
                         'type' => 'out',
                         'qty' => $request->fnbs_qty[$index],
                         'date' => now()->toDateString(),
-                        'note' => 'Penjualan transaksi #' . $transaction->id
+                        'note' => 'Penjualan transaksi #' . $transaction->id_transaksi
                     ]);
                 }
             }
@@ -235,7 +235,7 @@ class TransactionController extends Controller
             return redirect('transaction')->with('success', 'Data transaksi berhasil disimpan untuk pembayaran nanti.');
         } elseif ($request->action === 'bayar') {
             // Redirect to payment page
-            return redirect()->route('transaction.showPayment', $transaction->id);
+            return redirect()->route('transaction.showPayment', $transaction->id_transaksi);
         }
 
         if ($request->transaksi) {
@@ -337,40 +337,159 @@ class TransactionController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        if ($transaction->tipe_transaksi !== 'postpaid' || $transaction->status_transaksi !== 'berjalan') {
+        if ($transaction->status_transaksi !== 'berjalan') {
             return redirect('transaction')->with('gagal', 'Transaksi tidak dapat diakhiri.');
         }
 
-        $waktuMulai = Carbon::parse($transaction->created_at->toDateString() . ' ' . $transaction->waktu_mulai);
         $waktuSelesai = Carbon::now();
-        $durationMinutes = $waktuMulai->diffInMinutes($waktuSelesai, false); // false to get float
+        $totalFnb = $transaction->getFnbTotalAttribute();
 
-        if ($durationMinutes < 0) {
-            // If somehow negative, perhaps next day
-            $durationMinutes = 24 * 60 + $durationMinutes;
+        if ($transaction->tipe_transaksi === 'postpaid') {
+            // Calculate duration and cost for postpaid (Lost Time) transactions
+            $waktuMulai = Carbon::parse($transaction->created_at->toDateString() . ' ' . $transaction->waktu_mulai);
+            $durationMinutes = $waktuMulai->diffInMinutes($waktuSelesai, false);
+
+            if ($durationMinutes < 0) {
+                // If somehow negative, perhaps next day
+                $durationMinutes = 24 * 60 + $durationMinutes;
+            }
+
+            $costPerMinute = $transaction->harga / 60;
+            $totalPs = $durationMinutes * $costPerMinute;
+            $roundedTotalPs = ceil($totalPs / 1000) * 1000; // Round up to nearest 1000
+            $total = $roundedTotalPs + $totalFnb;
+
+            $hours = floor($durationMinutes / 60);
+            $minutes = $durationMinutes % 60;
+            $formattedDuration = sprintf('%d jam %d menit', $hours, $minutes);
+
+            $updateData = [
+                'waktu_Selesai' => $waktuSelesai->format('H:i'),
+                'jam_main' => $formattedDuration,
+                'total' => $total,
+            ];
+        } else {
+            // For prepaid transactions, just update the end time and status
+            $updateData = [
+                'waktu_Selesai' => $waktuSelesai->format('H:i'),
+                'total' => $transaction->harga + $totalFnb,
+            ];
         }
 
-        $costPerMinute = $transaction->harga / 60;
-        $totalPs = $durationMinutes * $costPerMinute;
-        $roundedTotalPs = ceil($totalPs / 1000) * 1000; // Round up to nearest 1000
-        $totalFnb = $transaction->getFnbTotalAttribute();
-        $total = $roundedTotalPs + $totalFnb;
-
-        $hours = floor($durationMinutes / 60);
-        $minutes = $durationMinutes % 60;
-        $formattedDuration = sprintf('%d jam %d menit', $hours, $minutes);
-
-        $transaction->update([
-            'waktu_Selesai' => $waktuSelesai->format('H:i'),
-            'jam_main' => $formattedDuration, // Format duration as "X jam Y menit"
-            'total' => $total,
+        // Common updates for both transaction types
+        $updateData = array_merge($updateData, [
             'status_transaksi' => 'selesai',
             'payment_status' => 'unpaid'
         ]);
 
+        $transaction->update($updateData);
+
         // Update device status to available
         $transaction->device->update(['status' => 'Tersedia']);
 
-        return redirect()->route('transaction.showPayment', $transaction->id)->with('success', 'Transaksi postpaid berhasil diakhiri. Silakan lakukan pembayaran.');
+        // Redirect to payment page
+        return redirect()->route('transaction.showPayment', $transaction->id_transaksi)
+            ->with('success', 'Transaksi berhasil diakhiri. Silakan lakukan pembayaran.');
     }
+
+    // app/Http/Controllers/TransactionController.php
+
+    public function addOrder($id)
+    {
+        $transaction = Transaction::findOrFail($id);
+
+        if ($transaction->payment_status !== 'unpaid') {
+            return redirect()->route('transaction.index')->with('error', 'Hanya bisa menambahkan pesanan untuk transaksi yang belum dibayar.');
+        }
+
+        $fnbs = Fnb::all();
+
+        // Calculate existing total (PS cost + existing FNB cost)
+        $existingFnbTotal = $transaction->getFnbTotalAttribute();
+        $existingTotal = $transaction->harga + $existingFnbTotal;
+
+        return view('transaction.add-order', [
+            'title' => 'Tambah Pesanan',
+            'active' => 'transaction',
+            'transaction' => $transaction,
+            'fnbs' => $fnbs,
+            'existingTotal' => $existingTotal
+        ]);
+    }
+
+public function storeOrder(Request $request, $id)
+{
+    $transaction = Transaction::findOrFail($id);
+    
+    if ($transaction->payment_status !== 'unpaid') {
+        return redirect()->route('transaction.index')->with('error', 'Hanya bisa menambahkan pesanan untuk transaksi yang belum dibayar.');
+    }
+
+    $request->validate([
+        'items' => 'required|array|min:1',
+        'items.*.fnb_id' => 'required|exists:fnbs,id',
+        'items.*.qty' => 'required|integer|min:1',
+    ]);
+
+    $totalAdded = 0;
+    
+    // Process each item in the order
+    foreach ($request->items as $item) {
+        $fnb = Fnb::findOrFail($item['fnb_id']);
+        $qty = (int)$item['qty'];
+        
+        // Check stock
+        if ($fnb->stok < $qty) {
+            return redirect()->back()
+                ->with('error', 'Stok ' . $fnb->nama . ' tidak mencukupi. Stok tersedia: ' . $fnb->stok);
+        }
+
+        // Check if this FNB is already in the transaction
+        $transactionFnb = TransactionFnb::where('transaction_id', $transaction->id_transaksi)
+            ->where('fnb_id', $fnb->id)
+            ->first();
+
+        if ($transactionFnb) {
+            // Update existing FNB in the transaction
+            $transactionFnb->qty += $qty;
+            $transactionFnb->save();
+        } else {
+            // Create new transaction FNB
+            $transactionFnb = new TransactionFnb([
+                'transaction_id' => $transaction->id_transaksi,
+                'fnb_id' => $fnb->id,
+                'qty' => $qty,
+                'harga_jual' => $fnb->harga_jual,
+                'harga_beli' => $fnb->harga_beli
+            ]);
+            $transactionFnb->save();
+        }
+
+        // Update FNB stock
+        $fnb->stok -= $qty;
+        $fnb->save();
+
+        // Create stock mutation
+        StockMutation::create([
+            'fnb_id' => $fnb->id,
+            'type' => 'out',
+            'qty' => $qty,
+            'date' => now()->toDateString(),
+            'note' => 'Penjualan - Transaksi #' . $transaction->id_transaksi
+        ]);
+
+        $totalAdded++;
+    }
+
+    // Recalculate the total for the transaction (PS cost + FNB total)
+    $fnbTotal = TransactionFnb::where('transaction_id', $transaction->id_transaksi)
+        ->selectRaw('SUM(qty * harga_jual) as total')
+        ->value('total') ?? 0;
+
+    $transaction->total = $transaction->harga + $fnbTotal;
+    $transaction->save();
+
+    return redirect()->route('transaction.show', $transaction->id_transaksi)
+        ->with('success', $totalAdded . ' item pesanan berhasil ditambahkan');
+}
 }

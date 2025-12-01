@@ -58,7 +58,7 @@
                                 <form action="{{ route('fnb.destroy', $fnb->id) }}" method="post" class="d-inline">
                                     @method('delete')
                                     @csrf
-                                    <button class="btn btn-danger btn-sm" onclick="return confirm('Yakin?')">Hapus</button>
+                                    <button class="btn btn-danger btn-sm" onclick="return confirm('Anda yakin menghapus barang ini?')">Hapus</button>
                                 </form>
                                 <a href="{{ route('stock.history', $fnb->id) }}" class="btn btn-info btn-sm">Riwayat Stok</a>
                             </td>

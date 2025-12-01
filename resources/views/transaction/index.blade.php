@@ -13,6 +13,8 @@
             {{ session('gagal') }}
         </div>
     @endif
+
+    
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">{{ $title }}</h1>
     </div>
@@ -90,7 +92,9 @@
                 
                 <div class="d-flex align-items-center">
                     @if (auth()->user()->status === 'admin')
-                        <a href="{{ route('transaction.create') }}" class="btn btn-primary btn-sm">Tambah Data</a>
+                        <a href="{{ route('transaction.create') }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus"></i> Tambah Data Pesanan
+                        </a>
                     @endif
                 </div>
             </div>
@@ -124,7 +128,7 @@
                 <tbody>
                     @foreach ($transactions as $transaksi)
                         <tr>
-                            <td>{{ $transaksi->id }}</td>
+                            <td>{{ $transaksi->id_transaksi }}</td>
                             <td>{{ $transaksi->nama }}</td>
                             <td>{{ $transaksi->device ? $transaksi->device->nama : 'N/A' }}</td>
                             <td>{{ $transaksi->device && $transaksi->device->playstation ? $transaksi->device->playstation->nama : 'N/A' }}</td>
@@ -151,14 +155,20 @@
                             @if (auth()->user()->status === 'admin' && $transaksi->device)
                                 <td>
                                     <div class="btn-group" role="group" aria-label="Action Buttons">
-                                        <a href="{{ route('transaction.show', $transaksi->id) }}" class="btn btn-info btn-sm" title="Detail">
+                                        <a href="{{ route('transaction.show', ['transaction' => $transaksi->id_transaksi]) }}" class="btn btn-info btn-sm" title="Detail">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        @if($transaksi->payment_status === 'unpaid' && $transaksi->tipe_transaksi === 'prepaid')
-                                            <a href="{{ route('transaction.showPayment', $transaksi->id) }}" class="btn btn-success btn-sm" title="Bayar">
+                                        @if($transaksi->payment_status === 'unpaid')
+                                            <a href="{{ route('transaction.showPayment', ['id' => $transaksi->id_transaksi]) }}" class="btn btn-success btn-sm" title="Bayar">
                                                 <i class="fas fa-credit-card"></i> Bayar
                                             </a>
                                         @endif
+                                        @if($transaksi->payment_status === 'unpaid')
+                                            <a href="{{ route('transaction.add-order', $transaksi->id_transaksi) }}" class="btn btn-primary btn-sm" title="Tambah Pesanan">
+                                                <i class="fas fa-plus"></i> Tambah Pesanan
+                                            </a>
+                                        @endif
+
                                         <form action="/transaction/{{ $transaksi->id }}/update" method="post" class="d-inline">
                                             @method('put')
                                             @csrf
@@ -170,9 +180,11 @@
                                             </button> --}}
                                         </form>
                                         @if($transaksi->status_transaksi === 'berjalan' && $transaksi->id)
-                                            <form action="{{ route('transaction.end', $transaksi->id) }}" method="post" class="d-inline">
+                                            <form action="{{ route('transaction.end', ['transaction' => $transaksi->id_transaksi]) }}" method="post" class="d-inline">
                                                 @csrf
-                                                <button type="submit" class="btn btn-warning btn-sm" onclick="return confirm('Apakah Anda yakin ingin mengakhiri transaksi ini?')" title="Selesai">Selesai</button>
+                                                <button type="submit" class="btn btn-warning btn-sm" onclick="return confirm('Apakah Anda yakin ingin mengakhiri transaksi ini?')" title="Selesai">
+                                                    <i class="fas fa-stop-circle"></i> Selesai
+                                                </button>
                                             </form>
                                         @endif
                                         <form action="/transaction/{{ $transaksi->id }}" method="post" class="d-inline">

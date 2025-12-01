@@ -21,7 +21,7 @@ class CreateTransactionFnbsTable extends Migration
             $table->integer('harga_jual');
             $table->timestamps();
 
-            $table->foreign('transaction_id')->references('id')->on('transactions')->onDelete('cascade');
+            $table->foreign('transaction_id')->references('id_transaksi')->on('transactions')->onDelete('cascade');
             $table->foreign('fnb_id')->references('id')->on('fnbs')->onDelete('cascade');
         });
     }
