@@ -8,19 +8,25 @@
         <form method="POST" action="{{ route('expense.store') }}">
             @csrf
             <div class="mb-3">
-                <label for="kategori" class="form-label">Kategori <span class="text-danger">*</span></label>
-                <select class="form-control @error('kategori') is-invalid @enderror" id="kategori" name="kategori" required>
-                    <option value="">Pilih Kategori</option>
-                    <option value="Operasional" {{ old('kategori') == 'Operasional' ? 'selected' : '' }}>Operasional</option>
-                    <option value="Pembelian Barang" {{ old('kategori') == 'Pembelian Barang' ? 'selected' : '' }}>Pembelian Barang</option>
-                    <option value="Pemeliharaan" {{ old('kategori') == 'Pemeliharaan' ? 'selected' : '' }}>Pemeliharaan</option>
-                    <option value="Listrik" {{ old('kategori') == 'Listrik' ? 'selected' : '' }}>Listrik</option>
-                    <option value="Internet" {{ old('kategori') == 'Internet' ? 'selected' : '' }}>Internet</option>
-                    <option value="Gaji Karyawan" {{ old('kategori') == 'Gaji Karyawan' ? 'selected' : '' }}>Gaji Karyawan</option>
-                    <option value="Sewa Tempat" {{ old('kategori') == 'Sewa Tempat' ? 'selected' : '' }}>Sewa Tempat</option>
-                    <option value="Lainnya" {{ old('kategori') == 'Lainnya' ? 'selected' : '' }}>Lainnya</option>
-                </select>
-                @error('kategori')
+                <label for="expense_category_id" class="form-label">Kategori <span class="text-danger">*</span></label>
+                @if($categories->count() > 0)
+                    <select class="form-control @error('expense_category_id') is-invalid @enderror" id="expense_category_id" name="expense_category_id" required>
+                        <option value="">Pilih Kategori</option>
+                        @foreach ($categories as $category)
+                            <option value="{{ $category->id }}" {{ old('expense_category_id') == $category->id ? 'selected' : '' }}>
+                                {{ $category->nama }}
+                            </option>
+                        @endforeach
+                    </select>
+                @else
+                    <select class="form-control" disabled>
+                        <option value="">Belum ada kategori</option>
+                    </select>
+                    <small class="form-text text-muted">
+                        <a href="{{ route('expense-category.create') }}">Buat kategori pengeluaran terlebih dahulu</a>
+                    </small>
+                @endif
+                @error('expense_category_id')
                     <div class="invalid-feedback">
                         {{ $message }}
                     </div>

@@ -15,7 +15,7 @@
                     <table class="table table-bordered">
                         <tr>
                             <th width="40%">Kategori</th>
-                            <td><span class="badge badge-info">{{ $expense->kategori }}</span></td>
+                            <td><span class="badge badge-info">{{ $expense->expenseCategory->nama ?? '-' }}</span></td>
                         </tr>
                         <tr>
                             <th>Deskripsi</th>

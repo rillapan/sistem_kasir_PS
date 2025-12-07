@@ -66,10 +66,19 @@
                 <span>Transaksi</span></a>
         </li>
 
-        <li class="nav-item {{ $active === 'expense' ? 'active' : '' }}">
-            <a class="nav-link" href="{{ route('expense.index') }}">
+        <li class="nav-item">
+            <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseExpense"
+                aria-expanded="true" aria-controls="collapseExpense">
                 <i class="fas fa-money-bill-wave"></i>
-                <span>Pengeluaran</span></a>
+                <span>Pengeluaran</span>
+            </a>
+            <div id="collapseExpense" class="collapse" aria-labelledby="headingExpense" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Pengeluaran Management:</h6>
+                    <a class="collapse-item {{ $active === 'expense-category' ? 'active' : '' }}" href="{{ route('expense-category.index') }}">Kategori Pengeluaran</a>
+                    <a class="collapse-item {{ $active === 'expense' ? 'active' : '' }}" href="{{ route('expense.index') }}">Daftar Pengeluaran</a>
+                </div>
+            </div>
         </li>
 
         <!-- Nav Item - Kelola FnB Collapse Menu -->

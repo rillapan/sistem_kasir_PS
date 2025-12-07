@@ -10,7 +10,7 @@ class Expense extends Model
     use HasFactory;
 
     protected $fillable = [
-        'kategori',
+        'expense_category_id',
         'deskripsi',
         'jumlah',
         'tanggal',
@@ -27,5 +27,10 @@ class Expense extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function expenseCategory()
+    {
+        return $this->belongsTo(ExpenseCategory::class, 'expense_category_id');
     }
 }

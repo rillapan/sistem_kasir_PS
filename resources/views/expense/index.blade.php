@@ -84,12 +84,12 @@
                             value="{{ $filters['end_date'] ?? '' }}">
                     </div>
                     <div class="col-md-3">
-                        <label for="kategori">Kategori</label>
-                        <select class="form-control" id="kategori" name="kategori">
+                        <label for="expense_category_id">Kategori</label>
+                        <select class="form-control" id="expense_category_id" name="expense_category_id">
                             <option value="">Semua Kategori</option>
                             @foreach($categories as $category)
-                                <option value="{{ $category }}" {{ ($filters['kategori'] ?? '') == $category ? 'selected' : '' }}>
-                                    {{ $category }}
+                                <option value="{{ $category->id }}" {{ ($filters['expense_category_id'] ?? '') == $category->id ? 'selected' : '' }}>
+                                    {{ $category->nama }}
                                 </option>
                             @endforeach
                         </select>
@@ -121,7 +121,7 @@
                         @forelse ($expenses as $expense)
                             <tr>
                                 <td>{{ $expense->tanggal->format('d/m/Y') }}</td>
-                                <td><span class="badge badge-info">{{ $expense->kategori }}</span></td>
+                                <td><span class="badge badge-info">{{ $expense->expenseCategory->nama ?? '-' }}</span></td>
                                 <td>{{ $expense->deskripsi }}</td>
                                 <td class="text-danger font-weight-bold">Rp {{ number_format($expense->jumlah, 0, ',', '.') }}</td>
                                 <td>{{ $expense->metode_pembayaran ?? '-' }}</td>

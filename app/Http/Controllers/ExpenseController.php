@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Expense;
+use App\Models\ExpenseCategory;
 use Illuminate\Http\Request;
 
 class ExpenseController extends Controller
@@ -14,7 +15,7 @@ class ExpenseController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Expense::with('user')->latest();
+        $query = Expense::with(['user', 'expenseCategory'])->latest();
 
         // Filter by date range if provided
         if ($request->has('start_date') && $request->start_date) {
@@ -25,8 +26,8 @@ class ExpenseController extends Controller
         }
 
         // Filter by category if provided
-        if ($request->has('kategori') && $request->kategori) {
-            $query->where('kategori', $request->kategori);
+        if ($request->has('expense_category_id') && $request->expense_category_id) {
+            $query->where('expense_category_id', $request->expense_category_id);
         }
 
         $expenses = $query->paginate(10);
@@ -37,8 +38,8 @@ class ExpenseController extends Controller
             ->whereYear('tanggal', now()->year)
             ->sum('jumlah');
 
-        // Get unique categories for filter
-        $categories = Expense::distinct()->pluck('kategori');
+        // Get categories for filter
+        $categories = ExpenseCategory::all();
 
         return view('expense.index', [
             'title' => 'Data Pengeluaran',
@@ -47,7 +48,7 @@ class ExpenseController extends Controller
             'totalExpenses' => $totalExpenses,
             'monthlyTotal' => $monthlyTotal,
             'categories' => $categories,
-            'filters' => $request->only(['start_date', 'end_date', 'kategori'])
+            'filters' => $request->only(['start_date', 'end_date', 'expense_category_id'])
         ]);
     }
 
@@ -58,9 +59,12 @@ class ExpenseController extends Controller
      */
     public function create()
     {
+        $categories = ExpenseCategory::all();
+
         return view('expense.create', [
             'title' => 'Tambah Pengeluaran',
-            'active' => 'expense'
+            'active' => 'expense',
+            'categories' => $categories
         ]);
     }
 
@@ -73,7 +77,7 @@ class ExpenseController extends Controller
     public function store(Request $request)
     {
         $validatedData = $request->validate([
-            'kategori' => 'required|string|max:255',
+            'expense_category_id' => 'required|exists:expense_categories,id',
             'deskripsi' => 'required|string|max:255',
             'jumlah' => 'required|numeric|min:0',
             'tanggal' => 'required|date',
@@ -96,7 +100,7 @@ class ExpenseController extends Controller
      */
     public function show($id)
     {
-        $expense = Expense::with('user')->findOrFail($id);
+        $expense = Expense::with(['user', 'expenseCategory'])->findOrFail($id);
 
         return view('expense.show', [
             'title' => 'Detail Pengeluaran',
@@ -114,11 +118,13 @@ class ExpenseController extends Controller
     public function edit($id)
     {
         $expense = Expense::findOrFail($id);
+        $categories = ExpenseCategory::all();
 
         return view('expense.edit', [
             'title' => 'Edit Pengeluaran',
             'active' => 'expense',
-            'expense' => $expense
+            'expense' => $expense,
+            'categories' => $categories
         ]);
     }
 
@@ -134,7 +140,7 @@ class ExpenseController extends Controller
         $expense = Expense::findOrFail($id);
 
         $validatedData = $request->validate([
-            'kategori' => 'required|string|max:255',
+            'expense_category_id' => 'required|exists:expense_categories,id',
             'deskripsi' => 'required|string|max:255',
             'jumlah' => 'required|numeric|min:0',
             'tanggal' => 'required|date',

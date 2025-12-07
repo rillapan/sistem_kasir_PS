@@ -66,3 +66,4 @@ Route::post('/stock/{id}/reduce', [App\Http\Controllers\StockController::class, 
 Route::get('/stock/{id}/history', [App\Http\Controllers\StockController::class, 'history'])->middleware('auth')->name('stock.history');
 
 Route::resource('/expense', App\Http\Controllers\ExpenseController::class)->middleware('auth');
+Route::resource('/expense-category', App\Http\Controllers\ExpenseCategoryController::class)->middleware('auth');
