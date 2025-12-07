@@ -21,6 +21,12 @@ class StockController extends Controller
     public function addForm($id)
     {
         $fnb = Fnb::findOrFail($id);
+        
+        // Prevent access if stock is unlimited
+        if ($fnb->stok == -1) {
+            return redirect('/stock')->with('gagal', 'Tidak dapat menambah stok untuk barang dengan stok unlimited.');
+        }
+        
         return view('stock.add', [
             'title' => 'Tambah Stok',
             'active' => 'stock',
@@ -36,7 +42,14 @@ class StockController extends Controller
         ]);
 
         $fnb = Fnb::findOrFail($id);
+        
+        // Prevent adding stock if stock is unlimited
+        if ($fnb->stok == -1) {
+            return redirect('/stock')->with('gagal', 'Tidak dapat menambah stok untuk barang dengan stok unlimited.');
+        }
+        
         $fnb->increment('stok', $request->qty);
+        $fnb->save();
 
         StockMutation::create([
             'fnb_id' => $id,
@@ -52,6 +65,12 @@ class StockController extends Controller
     public function reduceForm($id)
     {
         $fnb = Fnb::findOrFail($id);
+        
+        // Prevent access if stock is unlimited
+        if ($fnb->stok == -1) {
+            return redirect('/stock')->with('gagal', 'Tidak dapat mengurangi stok untuk barang dengan stok unlimited.');
+        }
+        
         return view('stock.reduce', [
             'title' => 'Kurangi Stok',
             'active' => 'stock',
@@ -67,6 +86,13 @@ class StockController extends Controller
         ]);
 
         $fnb = Fnb::findOrFail($id);
+        
+        // Prevent reducing stock if stock is unlimited
+        if ($fnb->stok == -1) {
+            return redirect('/stock')->with('gagal', 'Tidak dapat mengurangi stok untuk barang dengan stok unlimited.');
+        }
+        
+        // Check stock
         if ($fnb->stok < $request->qty) {
             return back()->with('gagal', 'Stok tidak cukup.');
         }

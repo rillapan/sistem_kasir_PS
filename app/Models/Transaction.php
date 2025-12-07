@@ -17,6 +17,7 @@ class Transaction extends Model
         'status',
         'member_id',
         'nama',
+        'no_telepon',
         'device_id',
         'user_id',
         'harga',
@@ -26,6 +27,7 @@ class Transaction extends Model
         'total',
         'status_transaksi',
         'payment_status',
+        'payment_method',
         'tipe_transaksi'
     ];
 

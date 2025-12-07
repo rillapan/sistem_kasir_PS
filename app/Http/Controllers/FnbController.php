@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Fnb;
+use App\Models\PriceGroup;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -20,7 +21,7 @@ class FnbController extends Controller
      */
     public function index()
     {
-        $fnbs = Fnb::latest()->paginate(10);
+        $fnbs = Fnb::with('priceGroup')->latest()->paginate(10);
         return view('fnb.index', [
             'title' => 'Kelola Barang',
             'active' => 'fnb',
@@ -35,9 +36,11 @@ class FnbController extends Controller
      */
     public function create()
     {
+        $priceGroups = PriceGroup::all();
         return view('fnb.create', [
             'title' => 'Tambah Barang',
-            'active' => 'fnb'
+            'active' => 'fnb',
+            'priceGroups' => $priceGroups
         ]);
     }
 
@@ -49,13 +52,31 @@ class FnbController extends Controller
      */
     public function store(Request $request)
     {
-        $validatedData = $request->validate([
+        $rules = [
             'nama' => 'required|string|max:255',
-            'harga_beli' => 'required|integer|min:0',
-            'harga_jual' => 'required|integer|min:0',
-            'stok' => 'required|integer|min:0',
+            'price_group_id' => 'required|exists:price_groups,id',
+            'stok_type' => 'required|in:limit,unlimit',
             'deskripsi' => 'nullable|string',
-        ]);
+        ];
+
+        // If stok_type is limit, stok is required and must be >= 0
+        if ($request->stok_type === 'limit') {
+            $rules['stok'] = 'required|integer|min:0';
+        }
+
+        $validatedData = $request->validate($rules);
+
+        // Get price from price group
+        $priceGroup = PriceGroup::findOrFail($validatedData['price_group_id']);
+        $validatedData['harga_jual'] = $priceGroup->harga;
+        
+        // Handle stok based on type
+        if ($validatedData['stok_type'] === 'unlimit') {
+            $validatedData['stok'] = -1; // Use -1 as marker for unlimited
+        }
+        
+        // Remove stok_type from validated data as it's not a database field
+        unset($validatedData['stok_type']);
 
         Fnb::create($validatedData);
 
@@ -82,10 +103,17 @@ class FnbController extends Controller
     public function edit($id)
     {
         $fnb = Fnb::findOrFail($id);
+        $priceGroups = PriceGroup::all();
+        
+        // Determine stok_type based on stok value
+        $stokType = ($fnb->stok == -1) ? 'unlimit' : 'limit';
+        
         return view('fnb.edit', [
             'title' => 'Edit Barang',
             'active' => 'fnb',
-            'fnb' => $fnb
+            'fnb' => $fnb,
+            'priceGroups' => $priceGroups,
+            'stokType' => $stokType
         ]);
     }
 
@@ -100,13 +128,36 @@ class FnbController extends Controller
     {
         $fnb = Fnb::findOrFail($id);
 
-        $validatedData = $request->validate([
+        $rules = [
             'nama' => 'required|string|max:255',
-            'harga_beli' => 'required|integer|min:0',
-            'harga_jual' => 'required|integer|min:0',
-            'stok' => 'required|integer|min:0',
+            'price_group_id' => 'required|exists:price_groups,id',
+            'stok_type' => 'required|in:limit,unlimit',
             'deskripsi' => 'nullable|string',
-        ]);
+        ];
+
+        // If stok_type is limit, stok is required and must be >= 0
+        if ($request->stok_type === 'limit') {
+            $rules['stok'] = 'required|integer|min:0';
+        }
+
+        $validatedData = $request->validate($rules);
+
+        // Get price from price group
+        $priceGroup = PriceGroup::findOrFail($validatedData['price_group_id']);
+        $validatedData['harga_jual'] = $priceGroup->harga;
+        
+        // Handle stok based on type
+        if ($validatedData['stok_type'] === 'unlimit') {
+            $validatedData['stok'] = -1; // Use -1 as marker for unlimited
+        }
+        
+        // Keep existing harga_beli if it exists (for backward compatibility)
+        if (!isset($validatedData['harga_beli'])) {
+            $validatedData['harga_beli'] = $fnb->harga_beli;
+        }
+        
+        // Remove stok_type from validated data as it's not a database field
+        unset($validatedData['stok_type']);
 
         $fnb->update($validatedData);
 

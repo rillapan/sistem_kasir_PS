@@ -39,6 +39,10 @@
                                     <td>{{ $transaction->nama }}</td>
                                 </tr>
                                 <tr>
+                                    <td><strong>No Telf :</strong></td>
+                                    <td>{{ $transaction->no_telepon }}</td>
+                                </tr>
+                                <tr>
                                     <td><strong>Tipe Transaksi:</strong></td>
                                    <td>{{ $transaction->tipe_transaksi === 'prepaid' ? 'Paket' : 'Lost Time' }}</td>
                                 </tr>

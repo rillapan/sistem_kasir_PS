@@ -41,10 +41,10 @@
                     <!-- Debug output for devices -->
                 
 
-                    <!-- Row 1: Nama and Device -->
+                    <!-- Row 1: Identitas Pelanggan -->
                     <div class="row mb-2">
                         <div class="col-md-6">
-                            <label for="nama" class="form-label small">Nama</label>
+                            <label for="nama" class="form-label small">Nama <span class="text-danger">*</span></label>
                             <input type="text" class="form-control @error('nama') is-invalid @enderror" id="nama"
                                 name="nama" value="{{ old('nama') }}" required>
                             @error('nama')
@@ -53,7 +53,21 @@
                                 </div>
                             @enderror
                         </div>
-                        <div class="col-md-6" id="device">
+                        <div class="col-md-6">
+                            <label for="no_telepon" class="form-label small">No. Telepon (Opsional)</label>
+                            <input type="text" class="form-control @error('no_telepon') is-invalid @enderror" id="no_telepon"
+                                name="no_telepon" value="{{ old('no_telepon') }}" placeholder="Contoh: 081234567890">
+                            @error('no_telepon')
+                                <div class="invalid-feedback">
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <!-- Row 2: Device -->
+                    <div class="row mb-2">
+                        <div class="col-md-12" id="device">
                             <label for="device" class="form-label small">Nama Perangkat</label>
                             <select class="form-control" id="device_id" name="device_id" onchange="showPrice()" {{ $noDevices ? 'disabled' : '' }}>
                                 @if($noDevices)
@@ -61,10 +75,14 @@
                                 @else
                                     <option value="dummy" selected disabled hidden>Pilih nama perangkat</option>
                                     @foreach ($devices as $device)
+                                        @php
+                                            $playstationName = $device->playstation ? $device->playstation->nama : 'Tidak Diketahui';
+                                            $displayText = $device->nama . ' - ' . $playstationName;
+                                        @endphp
                                         @if (old('device_id') == $device->id)
-                                            <option value="{{ $device->id }}" selected>{{ $device->nama }}</option>
+                                            <option value="{{ $device->id }}" selected>{{ $displayText }}</option>
                                         @else
-                                            <option value="{{ $device->id }}">{{ $device->nama }}</option>
+                                            <option value="{{ $device->id }}">{{ $displayText }}</option>
                                         @endif
                                     @endforeach
                                 @endif
@@ -72,7 +90,7 @@
                         </div>
                     </div>
 
-                    <!-- Row 2: Harga and Jam Mulai -->
+                    <!-- Row 3: Harga and Jam Mulai -->
                     <div class="row mb-2">
                         <div class="col-md-6">
                             <label for="harga" class="form-label small">Harga per Jam</label>
@@ -96,7 +114,7 @@
                         </div>
                     </div>
 
-                    <!-- Row 3: Jam Mulai and Jam Selesai -->
+                    <!-- Row 4: Jam Mulai and Jam Selesai -->
                     <div class="row mb-2">
                         <div class="col-md-6">
                             <label for="waktu_mulai" class="form-label small">Jam Mulai</label>
@@ -120,7 +138,7 @@
                         </div>
                     </div>
 
-                    <!-- Row 4: Total PS and Total FnB -->
+                    <!-- Row 5: Total PS and Total FnB -->
                     <div class="row mb-2">
                         <div class="col-md-6">
                             <label for="total_ps" class="form-label small">Total PS</label>
@@ -305,8 +323,14 @@
                         <label class="form-label small mb-1">Barang</label>
                         <select class="form-control form-control-sm fnb-select" name="fnb_ids[]" onchange="updateFnbPrice(this, ${fnbIndex})" required>
                             <option value="">Pilih Barang</option>
-                            ${fnbs.map(fnb => `<option value="${fnb.id}" data-price="${fnb.harga_jual}" data-stock="${fnb.stok}">${fnb.nama} (Stok: ${fnb.stok})</option>`).join('')}
+                            ${fnbs.map(fnb => {
+                                const stockText = fnb.stok == -1 ? 'Unlimited' : fnb.stok;
+                                return `<option value="${fnb.id}" data-price="${fnb.harga_jual}" data-stock="${fnb.stok}">${fnb.nama} (Stok: ${stockText})</option>`;
+                            }).join('')}
                         </select>
+                        <small class="text-muted fnb-stock-info" style="display: none; color: #28a745 !important; font-weight: bold;">
+                            <i class="fas fa-infinity"></i> <strong>Stok Unlimited</strong> - Bisa dipesan tanpa batasan
+                        </small>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label small mb-1">Qty</label>
@@ -333,8 +357,24 @@
 
         function updateFnbPrice(select, index) {
             const priceInput = select.closest('.fnb-item').querySelector('.fnb-price');
+            const qtyInput = select.closest('.fnb-item').querySelector('.fnb-qty');
+            const stockInfo = select.closest('.fnb-item').querySelector('.fnb-stock-info');
             const selectedOption = select.options[select.selectedIndex];
+            const stock = parseInt(selectedOption.getAttribute('data-stock'));
+            
             priceInput.value = selectedOption.getAttribute('data-price') || 0;
+            
+            // Show/hide unlimited info and remove max limit for qty
+            if (stock === -1) {
+                stockInfo.style.display = 'block';
+                qtyInput.removeAttribute('max');
+                qtyInput.setAttribute('title', 'Stok unlimited - bisa dipesan tanpa batasan');
+            } else {
+                stockInfo.style.display = 'none';
+                qtyInput.setAttribute('max', stock);
+                qtyInput.removeAttribute('title');
+            }
+            
             updateFnbTotal();
         }
 

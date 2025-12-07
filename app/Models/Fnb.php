@@ -15,7 +15,13 @@ class Fnb extends Model
         'harga_jual',
         'stok',
         'deskripsi',
+        'price_group_id',
     ];
+
+    public function priceGroup()
+    {
+        return $this->belongsTo(PriceGroup::class);
+    }
 
     public function stockMutations()
     {

@@ -38,7 +38,7 @@
                 <thead>
                     <tr>
                         <th scope="col">Nama</th>
-                        <th scope="col">Harga Beli</th>
+                        <th scope="col">Kelompok Harga</th>
                         <th scope="col">Harga Jual</th>
                         <th scope="col">Stok</th>
                         <th scope="col">Deskripsi</th>
@@ -49,9 +49,15 @@
                     @foreach ($fnbs as $fnb)
                         <tr>
                             <td>{{ $fnb->nama }}</td>
-                            <td>Rp {{ number_format($fnb->harga_beli, 0, ',', '.') }}</td>
+                            <td>{{ $fnb->priceGroup ? $fnb->priceGroup->nama : '-' }}</td>
                             <td>Rp {{ number_format($fnb->harga_jual, 0, ',', '.') }}</td>
-                            <td>{{ $fnb->stok }} {{ $fnb->satuan }}</td>
+                            <td>
+                                @if($fnb->stok == -1)
+                                    <span class="badge badge-success">Unlimited</span>
+                                @else
+                                    {{ $fnb->stok }} {{ $fnb->satuan ?? '' }}
+                                @endif
+                            </td>
                             <td>{{ $fnb->deskripsi ? Str::limit($fnb->deskripsi, 50) : '' }}</td>
                             <td>
                                 <a href="{{ route('fnb.edit', $fnb->id) }}" class="btn btn-warning btn-sm">Edit</a>

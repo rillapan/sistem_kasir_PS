@@ -53,6 +53,7 @@
                 <div class="bg-white py-2 collapse-inner rounded">
                     <h6 class="collapse-header">FnB Management:</h6>
                     <a class="collapse-item {{ $active === 'fnb' ? 'active' : '' }}" href="{{ route('fnb.index') }}">Kelola Barang</a>
+                    <a class="collapse-item {{ $active === 'price-group' ? 'active' : '' }}" href="{{ route('price-group.index') }}">Kelompok Harga</a>
                     <a class="collapse-item {{ $active === 'stock' ? 'active' : '' }}" href="{{ route('stock.index') }}">Manajemen Stok</a>
                     <a class="collapse-item {{ $active === 'fnb-laporan' ? 'active' : '' }}" href="{{ route('fnb.laporan') }}">Laporan Penjualan</a>
                 </div>
@@ -63,6 +64,12 @@
             <a class="nav-link" href="{{ route('transaction.index') }}">
                 <i class="fas fa-shopping-cart"></i>
                 <span>Transaksi</span></a>
+        </li>
+
+        <li class="nav-item {{ $active === 'expense' ? 'active' : '' }}">
+            <a class="nav-link" href="{{ route('expense.index') }}">
+                <i class="fas fa-money-bill-wave"></i>
+                <span>Pengeluaran</span></a>
         </li>
 
         <!-- Nav Item - Kelola FnB Collapse Menu -->

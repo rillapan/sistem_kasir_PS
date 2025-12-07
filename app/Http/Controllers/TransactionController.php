@@ -34,14 +34,17 @@ class TransactionController extends Controller
         $transaction = Transaction::findOrFail($id);
 
         $request->validate([
+            'payment_method' => 'required|in:tunai,e-wallet,transfer_bank',
             'amount_paid' => 'required|numeric|min:' . $transaction->total,
         ]);
 
         $amountPaid = $request->input('amount_paid');
         $change = $amountPaid - $transaction->total;
+        $paymentMethod = $request->input('payment_method');
 
         $transaction->update([
             'payment_status' => 'paid',
+            'payment_method' => $paymentMethod,
             'status_transaksi' => 'selesai',
         ]);
 
@@ -102,7 +105,7 @@ class TransactionController extends Controller
         // Call DeviceController's status update logic to ensure device statuses are accurate
         app(\App\Http\Controllers\DeviceController::class)->index();
 
-        $device = Device::where('status', 'Tersedia')->get();
+        $device = Device::with('playstation')->where('status', 'Tersedia')->get();
         $noDevices = $device->isEmpty();
         $playstation = Playstation::all();
         $fnbs = Fnb::all();
@@ -157,6 +160,7 @@ class TransactionController extends Controller
 
         $validatedData = $request->validate([
             'nama' => 'required',
+            'no_telepon' => 'nullable|string|max:20',
             'device_id' => 'required',
             'user_id' => 'nullable|exists:users,id',
             'harga' => 'required',
@@ -201,7 +205,9 @@ class TransactionController extends Controller
             foreach ($request->fnb_ids as $index => $fnb_id) {
                 if ($fnb_id && $request->fnbs_qty[$index] > 0) {
                     $fnb = Fnb::findOrFail($fnb_id);
-                    if ($fnb->stok < $request->fnbs_qty[$index]) {
+                    
+                    // Check stock only if not unlimited (stok != -1)
+                    if ($fnb->stok != -1 && $fnb->stok < $request->fnbs_qty[$index]) {
                         return back()->with('gagal', 'Stok FnB tidak cukup untuk ' . $fnb->nama);
                     }
 
@@ -212,8 +218,10 @@ class TransactionController extends Controller
                         'harga_jual' => $request->fnbs_harga[$index] ?? $fnb->harga_jual
                     ]);
 
-                    // Update stock
-                    $fnb->decrement('stok', $request->fnbs_qty[$index]);
+                    // Update stock only if not unlimited (stok != -1)
+                    if ($fnb->stok != -1) {
+                        $fnb->decrement('stok', $request->fnbs_qty[$index]);
+                    }
 
                     // Create stock mutation
                     StockMutation::create([
@@ -438,8 +446,8 @@ public function storeOrder(Request $request, $id)
         $fnb = Fnb::findOrFail($item['fnb_id']);
         $qty = (int)$item['qty'];
         
-        // Check stock
-        if ($fnb->stok < $qty) {
+        // Check stock only if not unlimited (stok != -1)
+        if ($fnb->stok != -1 && $fnb->stok < $qty) {
             return redirect()->back()
                 ->with('error', 'Stok ' . $fnb->nama . ' tidak mencukupi. Stok tersedia: ' . $fnb->stok);
         }
@@ -465,9 +473,11 @@ public function storeOrder(Request $request, $id)
             $transactionFnb->save();
         }
 
-        // Update FNB stock
-        $fnb->stok -= $qty;
-        $fnb->save();
+        // Update FNB stock only if not unlimited (stok != -1)
+        if ($fnb->stok != -1) {
+            $fnb->stok -= $qty;
+            $fnb->save();
+        }
 
         // Create stock mutation
         StockMutation::create([

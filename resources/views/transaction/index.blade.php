@@ -149,7 +149,22 @@
                             <td>{{ 'Rp ' . number_format($transaksi->total, 0, ',', '.') }}</td>
                             <td>{{ $transaksi->created_at }}</td>
                             <td>{{ ucfirst($transaksi->status_transaksi) }}</td>
-                            <td>{{ ucfirst($transaksi->payment_status) }}</td>
+                            <td>
+                                @if($transaksi->payment_status === 'paid')
+                                    Paid - 
+                                    @if($transaksi->payment_method === 'tunai')
+                                        Pembayaran Tunai
+                                    @elseif($transaksi->payment_method === 'e-wallet')
+                                        Pembayaran Menggunakan E-Wallet
+                                    @elseif($transaksi->payment_method === 'transfer_bank')
+                                        Transfer Bank
+                                    @else
+                                        {{ ucfirst($transaksi->payment_method ?? 'N/A') }}
+                                    @endif
+                                @else
+                                    {{ ucfirst($transaksi->payment_status) }}
+                                @endif
+                            </td>
 
 
                             @if (auth()->user()->status === 'admin' && $transaksi->device)

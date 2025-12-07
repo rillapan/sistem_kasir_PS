@@ -55,6 +55,8 @@ Route::get('/fnb/laporan-penjualan/pdf', [App\Http\Controllers\FnbController::cl
 // Panduan Route
 Route::get('/panduan', [App\Http\Controllers\PanduanController::class, 'index'])->name('panduan.index');
 Route::resource('/fnb', App\Http\Controllers\FnbController::class)->middleware('auth');
+Route::resource('/price-group', App\Http\Controllers\PriceGroupController::class)->middleware('auth');
+Route::get('/price-group/{id}/fnbs', [App\Http\Controllers\PriceGroupController::class, 'showFnbs'])->middleware('auth')->name('price-group.fnbs');
 
 Route::get('/stock', [App\Http\Controllers\StockController::class, 'index'])->middleware('auth')->name('stock.index');
 Route::get('/stock/{id}/add', [App\Http\Controllers\StockController::class, 'addForm'])->middleware('auth')->name('stock.add');
@@ -62,3 +64,5 @@ Route::post('/stock/{id}/add', [App\Http\Controllers\StockController::class, 'ad
 Route::get('/stock/{id}/reduce', [App\Http\Controllers\StockController::class, 'reduceForm'])->middleware('auth')->name('stock.reduce');
 Route::post('/stock/{id}/reduce', [App\Http\Controllers\StockController::class, 'reduceStock'])->middleware('auth');
 Route::get('/stock/{id}/history', [App\Http\Controllers\StockController::class, 'history'])->middleware('auth')->name('stock.history');
+
+Route::resource('/expense', App\Http\Controllers\ExpenseController::class)->middleware('auth');

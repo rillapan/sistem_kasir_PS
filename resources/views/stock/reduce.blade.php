@@ -19,7 +19,7 @@
                     <div class="mb-3">
                         <label for="qty" class="form-label">Jumlah Kurang</label>
                         <input type="number" class="form-control @error('qty') is-invalid @enderror" id="qty"
-                            name="qty" min="1" max="{{ $fnb->stok }}" required>
+                            name="qty" min="1" @if($fnb->stok != -1) max="{{ $fnb->stok }}" @endif required>
                         @error('qty')
                             <div class="invalid-feedback">
                                 {{ $message }}
