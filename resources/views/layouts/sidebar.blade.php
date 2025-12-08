@@ -66,6 +66,12 @@
                 <span>Transaksi</span></a>
         </li>
 
+        <li class="nav-item {{ $active === 'custom-package' ? 'active' : '' }}">
+            <a class="nav-link" href="{{ route('custom-package.index') }}">
+                <i class="fas fa-box"></i>
+                <span>Custom Paket</span></a>
+        </li>
+
         <li class="nav-item">
             <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseExpense"
                 aria-expanded="true" aria-controls="collapseExpense">

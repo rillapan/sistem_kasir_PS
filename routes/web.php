@@ -68,3 +68,7 @@ Route::get('/stock/{id}/history', [App\Http\Controllers\StockController::class, 
 
 Route::resource('/expense', App\Http\Controllers\ExpenseController::class)->middleware('auth');
 Route::resource('/expense-category', App\Http\Controllers\ExpenseCategoryController::class)->middleware('auth');
+
+// Custom Package Routes
+Route::resource('/custom-package', App\Http\Controllers\CustomPackageController::class)->middleware('auth');
+Route::put('/custom-package/{id}/toggle-status', [App\Http\Controllers\CustomPackageController::class, 'toggleStatus'])->name('custom-package.toggle-status')->middleware('auth');
