@@ -90,12 +90,10 @@ class HomeController extends Controller
     public function pieCartData2()
     {
         $playstations = Playstation::with(['device.transaction' => function($query) {
-            $query->where('status_transaksi', 'sukses')
-                  ->orWhere('payment_status', 'paid');
+            $query->where('payment_status', 'paid');
         }])
         ->whereHas('device.transaction', function($query) {
-            $query->where('status_transaksi', 'sukses')
-                  ->orWhere('payment_status', 'paid');
+            $query->where('payment_status', 'paid');
         })
         ->get();
         
@@ -135,10 +133,7 @@ class HomeController extends Controller
         $popularFnbs = \App\Models\TransactionFnb::selectRaw('fnbs.nama, SUM(transaction_fnbs.qty) as total_qty')
             ->join('fnbs', 'fnbs.id', '=', 'transaction_fnbs.fnb_id')
             ->join('transactions', 'transactions.id_transaksi', '=', 'transaction_fnbs.transaction_id')
-            ->where(function($query) {
-                $query->where('transactions.status_transaksi', 'sukses')
-                      ->orWhere('transactions.payment_status', 'paid');
-            })
+            ->where('transactions.payment_status', 'paid')
             ->groupBy('fnbs.id', 'fnbs.nama')
             ->orderBy('total_qty', 'DESC')
             ->limit(5)
@@ -170,12 +165,10 @@ class HomeController extends Controller
             $hourFormatted = str_pad($hour, 2, '0', STR_PAD_LEFT) . ':00';
             $labels[] = $hourFormatted;
             
+            // Only include paid transactions for accurate revenue data
             $total = Transaction::whereDate('created_at', today())
                 ->whereRaw('HOUR(created_at) = ?', [$hour])
-                ->where(function($query) {
-                    $query->where('status_transaksi', 'sukses')
-                          ->orWhere('payment_status', 'paid');
-                })
+                ->where('payment_status', 'paid')
                 ->sum('total');
             $totals[] = $total;
         }
@@ -184,7 +177,7 @@ class HomeController extends Controller
             'labels' => $labels,
             'datasets' => [
                 [
-                    "label" => "Pendapatan Per Jam",
+                    "label" => "Pendapatan Per Jam (Transaksi Paid)",
                     "lineTension" => 0.3,
                     "backgroundColor" => "rgba(78, 115, 223, 0.05)",
                     "borderColor" => "rgba(78, 115, 223, 1)",
@@ -212,10 +205,7 @@ class HomeController extends Controller
         for ($bulan = 1; $bulan <= 12; $bulan++) {
             $total = Transaction::whereYear('created_at', $currentYear)
                 ->whereMonth('created_at', $bulan)
-                ->where(function($query) {
-                    $query->where('status_transaksi', 'sukses')
-                          ->orWhere('payment_status', 'paid');
-                })
+                ->where('payment_status', 'paid')
                 ->sum('total');
             $totals[] = $total;
         }
@@ -223,7 +213,7 @@ class HomeController extends Controller
         $chartData = [
             'datasets' => [
                 [
-                    "label" => "Pendapatan",
+                    "label" => "Pendapatan (Transaksi Paid)",
                     "lineTension" => 0.3,
                     "backgroundColor" => "rgba(78, 115, 223, 0.05)",
                     "borderColor" => "rgba(78, 115, 223, 1)",

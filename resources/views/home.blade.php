@@ -133,39 +133,42 @@
 <script src="vendor/chart.js/Chart.min.js"></script>
 
 <script>
+document.addEventListener('DOMContentLoaded', function() {
     // Pie Chart for PlayStation Revenue
     var ctx = document.getElementById("myPieChart2");
-    var myPieChart2 = new Chart(ctx, {
-        type: 'doughnut',
-        data: {!! json_encode(app('App\Http\Controllers\HomeController')->pieCartData2()) !!},
-        options: {
-            maintainAspectRatio: false,
-            tooltips: {
-                backgroundColor: "rgb(255,255,255)",
-                bodyFontColor: "#858796",
-                borderColor: '#dddfeb',
-                borderWidth: 1,
-                xPadding: 15,
-                yPadding: 15,
-                displayColors: false,
-                caretPadding: 10,
-                callbacks: {
-                    label: function(tooltipItem, data) {
-                        var label = data.labels[tooltipItem.index] || '';
-                        if (label) {
-                            label += ': ';
+    if (ctx) {
+        var myPieChart2 = new Chart(ctx, {
+            type: 'doughnut',
+            data: {!! json_encode(app('App\Http\Controllers\HomeController')->pieCartData2()) !!},
+            options: {
+                maintainAspectRatio: false,
+                tooltips: {
+                    backgroundColor: "rgb(255,255,255)",
+                    bodyFontColor: "#858796",
+                    borderColor: '#dddfeb',
+                    borderWidth: 1,
+                    xPadding: 15,
+                    yPadding: 15,
+                    displayColors: false,
+                    caretPadding: 10,
+                    callbacks: {
+                        label: function(tooltipItem, data) {
+                            var label = data.labels[tooltipItem.index] || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            label += 'Rp ' + data.datasets[0].data[tooltipItem.index].toLocaleString('id-ID');
+                            return label;
                         }
-                        label += 'Rp ' + data.datasets[0].data[tooltipItem.index].toLocaleString('id-ID');
-                        return label;
                     }
-                }
+                },
+                legend: {
+                    display: false
+                },
+                cutoutPercentage: 60,
             },
-            legend: {
-                display: false
-            },
-            cutoutPercentage: 60,
-        },
-    });
+        });
+    }
 
     // Bar Chart for Popular FnB
     var fnbData = {!! json_encode(app('App\Http\Controllers\HomeController')->popularFnbs()) !!};
@@ -260,73 +263,76 @@
 
     // Area Chart for Hourly Revenue Today
     var ctx3 = document.getElementById("myAreaChart");
-    var myAreaChart = new Chart(ctx3, {
-        type: 'line',
-        data: {!! json_encode(app('App\Http\Controllers\HomeController')->hourlyRevenueData()) !!},
-        options: {
-            maintainAspectRatio: false,
-            layout: {
-                padding: {
-                    left: 10,
-                    right: 25,
-                    top: 25,
-                    bottom: 0
-                }
-            },
-            scales: {
-                xAxes: [{
-                    time: {
-                        unit: 'hour'
-                    },
-                    gridLines: {
-                        display: false,
-                        drawBorder: false
-                    },
-                    ticks: {
-                        maxTicksLimit: 24
+    if (ctx3) {
+        var myAreaChart = new Chart(ctx3, {
+            type: 'line',
+            data: {!! json_encode(app('App\Http\Controllers\HomeController')->hourlyRevenueData()) !!},
+            options: {
+                maintainAspectRatio: false,
+                layout: {
+                    padding: {
+                        left: 10,
+                        right: 25,
+                        top: 25,
+                        bottom: 0
                     }
-                }],
-                yAxes: [{
-                    ticks: {
-                        maxTicksLimit: 5,
-                        padding: 10,
-                        callback: function(value, index, values) {
-                            return 'Rp ' + value.toLocaleString('id-ID');
+                },
+                scales: {
+                    xAxes: [{
+                        time: {
+                            unit: 'hour'
+                        },
+                        gridLines: {
+                            display: false,
+                            drawBorder: false
+                        },
+                        ticks: {
+                            maxTicksLimit: 24
                         }
-                    },
-                    gridLines: {
-                        color: "rgb(234, 236, 244)",
-                        zeroLineColor: "rgb(234, 236, 244)",
-                        drawBorder: false,
-                        borderDash: [2],
-                        zeroLineBorderDash: [2]
-                    }
-                }],
-            },
-            legend: {
-                display: false
-            },
-            tooltips: {
-                backgroundColor: "rgb(255,255,255)",
-                bodyFontColor: "#858796",
-                titleMarginBottom: 10,
-                titleFontColor: '#6e707e',
-                titleFontSize: 14,
-                borderColor: '#dddfeb',
-                borderWidth: 1,
-                xPadding: 15,
-                yPadding: 15,
-                displayColors: false,
-                caretPadding: 10,
-                callbacks: {
-                    label: function(tooltipItem, chart) {
-                        var datasetLabel = chart.datasets[tooltipItem.datasetIndex].label || '';
-                        return datasetLabel + ': Rp ' + tooltipItem.yLabel.toLocaleString('id-ID');
+                    }],
+                    yAxes: [{
+                        ticks: {
+                            maxTicksLimit: 5,
+                            padding: 10,
+                            callback: function(value, index, values) {
+                                return 'Rp ' + value.toLocaleString('id-ID');
+                            }
+                        },
+                        gridLines: {
+                            color: "rgb(234, 236, 244)",
+                            zeroLineColor: "rgb(234, 236, 244)",
+                            drawBorder: false,
+                            borderDash: [2],
+                            zeroLineBorderDash: [2]
+                        }
+                    }],
+                },
+                legend: {
+                    display: false
+                },
+                tooltips: {
+                    backgroundColor: "rgb(255,255,255)",
+                    bodyFontColor: "#858796",
+                    titleMarginBottom: 10,
+                    titleFontColor: '#6e707e',
+                    titleFontSize: 14,
+                    borderColor: '#dddfeb',
+                    borderWidth: 1,
+                    xPadding: 15,
+                    yPadding: 15,
+                    displayColors: false,
+                    caretPadding: 10,
+                    callbacks: {
+                        label: function(tooltipItem, chart) {
+                            var datasetLabel = chart.datasets[tooltipItem.datasetIndex].label || '';
+                            return datasetLabel + ': Rp ' + tooltipItem.yLabel.toLocaleString('id-ID');
+                        }
                     }
                 }
             }
-        }
-    });
+        });
+    }
+});
 </script>
 @endpush
 
