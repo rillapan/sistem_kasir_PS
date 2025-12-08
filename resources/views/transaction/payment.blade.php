@@ -140,6 +140,18 @@
         </div>
     </div>
 
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Apakah ada pesanan tambahan?</h5>
+        </div>
+        <div class="card-body">
+            <p class="mb-3">Tambahkan makanan atau minuman untuk transaksi ini</p>
+            <a href="{{ route('transaction.add-order', $transaction->id_transaksi) }}" class="btn btn-success">
+                <i class="fas fa-plus"></i> Tambah Pesanan
+            </a>
+        </div>
+    </div>
+
     <div class="card">
         <div class="card-header">
             <h5>Proses Pembayaran</h5>
@@ -186,7 +198,8 @@
                 </div>
 
                 <button type="submit" class="btn btn-primary">Bayar</button>
-                <a href="{{ route('transaction.index') }}" class="btn btn-secondary">Batal</a>
+                <a href="{{ route('transaction.index') }}" class="btn btn-secondary">Kembali ke Transaksi</a>
+                <a href="{{ route('transaction.index') }}" class="btn btn-danger">Batal</a>
             </form>
         </div>
     </div>

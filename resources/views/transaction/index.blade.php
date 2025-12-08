@@ -55,7 +55,9 @@
                         <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $paidCount }}</div>
                     </div>
                     <div>
-                        <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#paymentDetailModal" title="Lihat Detail Pembayaran">
+                            <i class="fas fa-eye"></i>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -321,4 +323,77 @@
         }
     });
 </script>
+
+<!-- Payment Detail Modal -->
+<div class="modal fade" id="paymentDetailModal" tabindex="-1" aria-labelledby="paymentDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="paymentDetailModalLabel">Detail Pembayaran</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <h4 class="text-info">Total Transaksi Paid</h4>
+                    <h2 class="font-weight-bold">{{ $paidCount }}</h2>
+                </div>
+                
+                <hr>
+                
+                <div class="payment-method-details">
+                    <h6 class="text-muted mb-3">Jenis Pembayaran:</h6>
+                    
+                    @if($paymentMethodCounts['tunai'] > 0)
+                    <div class="payment-method-item mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold">Pembayaran Tunai</span>
+                            <span class="badge bg-primary">{{ $paymentMethodCounts['tunai'] }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted">Total Uang</span>
+                            <span class="fw-bold text-success">Rp {{ number_format($paymentMethodTotals['tunai'], 0, ',', '.') }}</span>
+                        </div>
+                    </div>
+                    @endif
+                    
+                    @if($paymentMethodCounts['e-wallet'] > 0)
+                    <div class="payment-method-item mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold">Pembayaran E-Wallet</span>
+                            <span class="badge bg-success">{{ $paymentMethodCounts['e-wallet'] }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted">Total Uang</span>
+                            <span class="fw-bold text-success">Rp {{ number_format($paymentMethodTotals['e-wallet'], 0, ',', '.') }}</span>
+                        </div>
+                    </div>
+                    @endif
+                    
+                    @if($paymentMethodCounts['transfer_bank'] > 0)
+                    <div class="payment-method-item mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold">Pembayaran Transfer Bank</span>
+                            <span class="badge bg-warning">{{ $paymentMethodCounts['transfer_bank'] }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted">Total Uang</span>
+                            <span class="fw-bold text-success">Rp {{ number_format($paymentMethodTotals['transfer_bank'], 0, ',', '.') }}</span>
+                        </div>
+                    </div>
+                    @endif
+                    
+                    @if($paidCount == 0)
+                    <div class="text-center text-muted">
+                        <i class="fas fa-info-circle fa-3x mb-3"></i>
+                        <p>Belum ada pembayaran</p>
+                    </div>
+                    @endif
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection

@@ -69,7 +69,9 @@
                             </div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                            <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#todayRevenueDetailModal" title="Lihat Detail Pembayaran Hari Ini">
+                                <i class="fas fa-eye"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -85,7 +87,7 @@
                 <!-- Card Header - Dropdown -->
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                     <h6 class="m-0 font-weight-bold text-primary">
-                        Grafik Pendapatan Perbulan
+                        Grafik Pendapatan Hari Ini
                     </h6>
                     <div class="dropdown no-arrow">
                         <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink"
@@ -255,7 +257,150 @@
             chartContainer.style.display = 'none';
         }
     }
+
+    // Area Chart for Hourly Revenue Today
+    var ctx3 = document.getElementById("myAreaChart");
+    var myAreaChart = new Chart(ctx3, {
+        type: 'line',
+        data: {!! json_encode(app('App\Http\Controllers\HomeController')->hourlyRevenueData()) !!},
+        options: {
+            maintainAspectRatio: false,
+            layout: {
+                padding: {
+                    left: 10,
+                    right: 25,
+                    top: 25,
+                    bottom: 0
+                }
+            },
+            scales: {
+                xAxes: [{
+                    time: {
+                        unit: 'hour'
+                    },
+                    gridLines: {
+                        display: false,
+                        drawBorder: false
+                    },
+                    ticks: {
+                        maxTicksLimit: 24
+                    }
+                }],
+                yAxes: [{
+                    ticks: {
+                        maxTicksLimit: 5,
+                        padding: 10,
+                        callback: function(value, index, values) {
+                            return 'Rp ' + value.toLocaleString('id-ID');
+                        }
+                    },
+                    gridLines: {
+                        color: "rgb(234, 236, 244)",
+                        zeroLineColor: "rgb(234, 236, 244)",
+                        drawBorder: false,
+                        borderDash: [2],
+                        zeroLineBorderDash: [2]
+                    }
+                }],
+            },
+            legend: {
+                display: false
+            },
+            tooltips: {
+                backgroundColor: "rgb(255,255,255)",
+                bodyFontColor: "#858796",
+                titleMarginBottom: 10,
+                titleFontColor: '#6e707e',
+                titleFontSize: 14,
+                borderColor: '#dddfeb',
+                borderWidth: 1,
+                xPadding: 15,
+                yPadding: 15,
+                displayColors: false,
+                caretPadding: 10,
+                callbacks: {
+                    label: function(tooltipItem, chart) {
+                        var datasetLabel = chart.datasets[tooltipItem.datasetIndex].label || '';
+                        return datasetLabel + ': Rp ' + tooltipItem.yLabel.toLocaleString('id-ID');
+                    }
+                }
+            }
+        }
+    });
 </script>
 @endpush
+
+<!-- Today's Revenue Detail Modal -->
+<div class="modal fade" id="todayRevenueDetailModal" tabindex="-1" aria-labelledby="todayRevenueDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="todayRevenueDetailModalLabel">Detail Pembayaran Hari Ini</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <h4 class="text-warning">Total Pendapatan Hari Ini</h4>
+                    <h2 class="font-weight-bold">Rp {{ number_format($today_pendapatan, 0, ',', '.') }}</h2>
+                </div>
+                
+                <hr>
+                
+                <div class="payment-method-details">
+                    <h6 class="text-muted mb-3">Jenis Pembayaran:</h6>
+                    
+                    @if($todayPaymentMethodCounts['tunai'] > 0)
+                    <div class="payment-method-item mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold">Pembayaran Tunai</span>
+                            <span class="badge bg-primary">{{ $todayPaymentMethodCounts['tunai'] }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted">Total Uang</span>
+                            <span class="fw-bold text-success">Rp {{ number_format($todayPaymentMethodTotals['tunai'], 0, ',', '.') }}</span>
+                        </div>
+                    </div>
+                    @endif
+                    
+                    @if($todayPaymentMethodCounts['e-wallet'] > 0)
+                    <div class="payment-method-item mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold">Pembayaran E-Wallet</span>
+                            <span class="badge bg-success">{{ $todayPaymentMethodCounts['e-wallet'] }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted">Total Uang</span>
+                            <span class="fw-bold text-success">Rp {{ number_format($todayPaymentMethodTotals['e-wallet'], 0, ',', '.') }}</span>
+                        </div>
+                    </div>
+                    @endif
+                    
+                    @if($todayPaymentMethodCounts['transfer_bank'] > 0)
+                    <div class="payment-method-item mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold">Pembayaran Transfer Bank</span>
+                            <span class="badge bg-warning">{{ $todayPaymentMethodCounts['transfer_bank'] }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted">Total Uang</span>
+                            <span class="fw-bold text-success">Rp {{ number_format($todayPaymentMethodTotals['transfer_bank'], 0, ',', '.') }}</span>
+                        </div>
+                    </div>
+                    @endif
+                    
+                    @if($today_pendapatan == 0)
+                    <div class="text-center text-muted">
+                        <i class="fas fa-info-circle fa-3x mb-3"></i>
+                        <p>Belum ada pendapatan hari ini</p>
+                    </div>
+                    @endif
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 @endsection

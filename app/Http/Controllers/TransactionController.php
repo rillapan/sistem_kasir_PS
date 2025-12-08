@@ -83,6 +83,19 @@ class TransactionController extends Controller
         $paidCount = Transaction::where('payment_status', 'paid')->count();
         $unpaidCount = Transaction::where('payment_status', 'unpaid')->count();
 
+        // Calculate payment method breakdown for paid transactions
+        $paymentMethodCounts = [
+            'tunai' => Transaction::where('payment_status', 'paid')->where('payment_method', 'tunai')->count(),
+            'e-wallet' => Transaction::where('payment_status', 'paid')->where('payment_method', 'e-wallet')->count(),
+            'transfer_bank' => Transaction::where('payment_status', 'paid')->where('payment_method', 'transfer_bank')->count(),
+        ];
+
+        $paymentMethodTotals = [
+            'tunai' => Transaction::where('payment_status', 'paid')->where('payment_method', 'tunai')->sum('total'),
+            'e-wallet' => Transaction::where('payment_status', 'paid')->where('payment_method', 'e-wallet')->sum('total'),
+            'transfer_bank' => Transaction::where('payment_status', 'paid')->where('payment_method', 'transfer_bank')->sum('total'),
+        ];
+
         return view('transaction.index', [
             'title' => 'Data Tansaksi',
             'active' => 'transaction',
@@ -92,6 +105,8 @@ class TransactionController extends Controller
             'prepaidCount' => $prepaidCount,
             'paidCount' => $paidCount,
             'unpaidCount' => $unpaidCount,
+            'paymentMethodCounts' => $paymentMethodCounts,
+            'paymentMethodTotals' => $paymentMethodTotals,
         ]);
     }
 
@@ -499,7 +514,7 @@ public function storeOrder(Request $request, $id)
     $transaction->total = $transaction->harga + $fnbTotal;
     $transaction->save();
 
-    return redirect()->route('transaction.show', $transaction->id_transaksi)
+    return redirect()->route('transaction.showPayment', $transaction->id_transaksi)
         ->with('success', $totalAdded . ' item pesanan berhasil ditambahkan');
 }
 }

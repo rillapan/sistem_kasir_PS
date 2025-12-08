@@ -53,8 +53,26 @@ class DeviceController extends Controller
             if ($transaction) {
                 if ($transaction->tipe_transaksi === 'prepaid') {
                     $endTime = $transaction->waktu_Selesai;
-                    if ($endTime && Carbon::parse($today . ' ' . $endTime) > Carbon::parse($today . ' ' . $currentTime)) {
-                        $newStatus = 'Digunakan';
+                    if ($endTime) {
+                        // Get the transaction start time and date
+                        $startTime = $transaction->waktu_mulai;
+                        $transactionDate = $transaction->created_at->format('Y-m-d');
+                        
+                        // Create proper datetime objects for start and end times
+                        $startDateTime = Carbon::parse($transactionDate . ' ' . $startTime);
+                        $endDateTime = Carbon::parse($transactionDate . ' ' . $endTime);
+                        
+                        // If end time is earlier than start time, it means it's the next day
+                        if ($endDateTime < $startDateTime) {
+                            $endDateTime->addDay();
+                        }
+                        
+                        // Compare with current time
+                        if ($endDateTime > $now) {
+                            $newStatus = 'Digunakan';
+                        } else {
+                            $newStatus = 'Tersedia';
+                        }
                     } else {
                         $newStatus = 'Tersedia';
                     }
@@ -97,7 +115,28 @@ class DeviceController extends Controller
                 if ($transaction) {
                     // For prepaid transactions
                     if ($transaction->tipe_transaksi === 'prepaid' && $transaction->waktu_Selesai) {
-                        $timers[$dev->id] = $transaction->waktu_Selesai;
+                        // Get the transaction start time and date
+                        $startTime = $transaction->waktu_mulai;
+                        $transactionDate = $transaction->created_at->format('Y-m-d');
+                        
+                        // Create proper datetime objects for start and end times
+                        $startDateTime = Carbon::parse($transactionDate . ' ' . $startTime);
+                        $endDateTime = Carbon::parse($transactionDate . ' ' . $transaction->waktu_Selesai);
+                        
+                        // If end time is earlier than start time, it means it's the next day
+                        if ($endDateTime < $startDateTime) {
+                            $endDateTime->addDay();
+                        }
+                        
+                        // Only set timer if the transaction is still active
+                        if ($endDateTime > $now) {
+                            $timers[$dev->id] = [
+                                'end_time' => $transaction->waktu_Selesai,
+                                'end_date' => $endDateTime->format('Y-m-d'),
+                                'start_date' => $transactionDate,
+                                'start_time' => $startTime
+                            ];
+                        }
                     }
                     // For postpaid transactions that are still running
                     elseif ($transaction->tipe_transaksi === 'postpaid' && $transaction->status_transaksi === 'berjalan') {

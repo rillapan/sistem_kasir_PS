@@ -41,6 +41,37 @@ class HomeController extends Controller
             ->where('payment_status', 'paid')
             ->sum('total');
             
+        // Calculate payment method breakdown for today's paid transactions
+        $todayPaymentMethodCounts = [
+            'tunai' => Transaction::whereDate('created_at', today())
+                ->where('payment_status', 'paid')
+                ->where('payment_method', 'tunai')
+                ->count(),
+            'e-wallet' => Transaction::whereDate('created_at', today())
+                ->where('payment_status', 'paid')
+                ->where('payment_method', 'e-wallet')
+                ->count(),
+            'transfer_bank' => Transaction::whereDate('created_at', today())
+                ->where('payment_status', 'paid')
+                ->where('payment_method', 'transfer_bank')
+                ->count(),
+        ];
+
+        $todayPaymentMethodTotals = [
+            'tunai' => Transaction::whereDate('created_at', today())
+                ->where('payment_status', 'paid')
+                ->where('payment_method', 'tunai')
+                ->sum('total'),
+            'e-wallet' => Transaction::whereDate('created_at', today())
+                ->where('payment_status', 'paid')
+                ->where('payment_method', 'e-wallet')
+                ->sum('total'),
+            'transfer_bank' => Transaction::whereDate('created_at', today())
+                ->where('payment_status', 'paid')
+                ->where('payment_method', 'transfer_bank')
+                ->sum('total'),
+        ];
+            
         return view('home', [
             'title' => 'Dashboard',
             'active' => 'dashboard',
@@ -48,7 +79,9 @@ class HomeController extends Controller
             'play' => $play,
             'transaksi' => $transaction,
             'pendapatan' => $revenue,
-            'today_pendapatan' => $todayRevenue
+            'today_pendapatan' => $todayRevenue,
+            'todayPaymentMethodCounts' => $todayPaymentMethodCounts,
+            'todayPaymentMethodTotals' => $todayPaymentMethodTotals,
         ]);
     }
 
@@ -125,6 +158,50 @@ class HomeController extends Controller
                 return (int)$item;
             })->toArray()
         ];
+    }
+
+    public function hourlyRevenueData()
+    {
+        $totals = [];
+        $labels = [];
+        
+        // Generate hourly data for today (00:00 to 23:00)
+        for ($hour = 0; $hour <= 23; $hour++) {
+            $hourFormatted = str_pad($hour, 2, '0', STR_PAD_LEFT) . ':00';
+            $labels[] = $hourFormatted;
+            
+            $total = Transaction::whereDate('created_at', today())
+                ->whereRaw('HOUR(created_at) = ?', [$hour])
+                ->where(function($query) {
+                    $query->where('status_transaksi', 'sukses')
+                          ->orWhere('payment_status', 'paid');
+                })
+                ->sum('total');
+            $totals[] = $total;
+        }
+
+        $chartData = [
+            'labels' => $labels,
+            'datasets' => [
+                [
+                    "label" => "Pendapatan Per Jam",
+                    "lineTension" => 0.3,
+                    "backgroundColor" => "rgba(78, 115, 223, 0.05)",
+                    "borderColor" => "rgba(78, 115, 223, 1)",
+                    "pointRadius" => 3,
+                    "pointBackgroundColor" => "rgba(78, 115, 223, 1)",
+                    "pointBorderColor" => "rgba(78, 115, 223, 1)",
+                    "pointHoverRadius" => 3,
+                    "pointHoverBackgroundColor" => "rgba(78, 115, 223, 1)",
+                    "pointHoverBorderColor" => "rgba(78, 115, 223, 1)",
+                    "pointHitRadius" => 10,
+                    "pointBorderWidth" => 2,
+                    "data" => $totals,
+                ]
+            ]
+        ];
+
+        return $chartData;
     }
 
     public function areaCartData()

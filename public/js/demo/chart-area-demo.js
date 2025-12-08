@@ -29,12 +29,15 @@ function number_format(number, decimals, dec_point, thousands_sep) {
 
 // Area Chart Example
 var ctx = document.getElementById("myAreaChart");
-var myLineChart = new Chart(ctx, {
-  type: 'line',
-  data: {
-    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-    datasets: [],
-  },
+console.log('Chart element found:', ctx);
+
+if (ctx) {
+  var myLineChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [], // Will be populated with hourly labels
+      datasets: [],
+    },
   options: {
     maintainAspectRatio: false,
     layout: {
@@ -48,14 +51,17 @@ var myLineChart = new Chart(ctx, {
     scales: {
       xAxes: [{
         time: {
-          unit: 'date'
+          unit: 'hour'
         },
         gridLines: {
           display: false,
           drawBorder: false
         },
         ticks: {
-          maxTicksLimit: 7
+          maxTicksLimit: 12, // Show more ticks for hourly data
+          autoSkip: true,
+          maxRotation: 0,
+          minRotation: 0
         }
       }],
       yAxes: [{
@@ -101,10 +107,24 @@ var myLineChart = new Chart(ctx, {
       }
     }
   }
-});
+  });
+} else {
+  console.error('Chart element with id "myAreaChart" not found');
+}
 
-$.get('/chart-area-data', function(data) {
-  console.log(data.datasets)
-  myLineChart.data.datasets = data.datasets;
-  myLineChart.update();
+$.get('/hourly-revenue-data', function(data) {
+  console.log('Hourly revenue data received:', data);
+  console.log('Labels:', data.labels);
+  console.log('Datasets:', data.datasets);
+  if (typeof myLineChart !== 'undefined') {
+    myLineChart.data.labels = data.labels;
+    myLineChart.data.datasets = data.datasets;
+    myLineChart.update();
+  } else {
+    console.error('Chart not initialized');
+  }
+}).fail(function(xhr, status, error) {
+  console.error('Error loading hourly revenue data:', error);
+  console.log('XHR status:', xhr.status);
+  console.log('Response text:', xhr.responseText);
 });

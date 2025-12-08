@@ -178,10 +178,9 @@
     </div>
     <script>
         // Function to update prepaid timer
-        function updatePrepaidTimer(deviceId, endTimeStr) {
-            let [h, m, s] = endTimeStr.split(':').map(Number);
-            let endTime = new Date();
-            endTime.setHours(h, m, s, 0);
+        function updatePrepaidTimer(deviceId, timerData) {
+            // Create proper end date with time
+            let endTime = new Date(`${timerData.end_date} ${timerData.end_time}`);
             let now = new Date();
             
             if (endTime <= now) {
@@ -257,8 +256,13 @@
         // Initialize timers when the page loads
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize prepaid timers
-            @foreach($timers as $deviceId => $endTime)
-                updatePrepaidTimer({{ $deviceId }}, '{{ $endTime }}');
+            @foreach($timers as $deviceId => $timerData)
+                updatePrepaidTimer({{ $deviceId }}, {
+                    end_time: '{{ $timerData['end_time'] }}',
+                    end_date: '{{ $timerData['end_date'] }}',
+                    start_date: '{{ $timerData['start_date'] }}',
+                    start_time: '{{ $timerData['start_time'] }}'
+                });
             @endforeach
             
             // Initialize postpaid timers

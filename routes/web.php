@@ -47,6 +47,7 @@ Route::get('/profile', 'App\Http\Controllers\HomeController@profile')->middlewar
 Route::put('/profile/{id}', 'App\Http\Controllers\HomeController@update')->middleware('auth');
 
 Route::get('/chart-area-data', 'App\Http\Controllers\HomeController@areaCartData');
+Route::get('/hourly-revenue-data', 'App\Http\Controllers\HomeController@hourlyRevenueData')->middleware('auth');
 
 Route::get('/fnb/laporan-penjualan', [App\Http\Controllers\FnbController::class, 'laporanPenjualan'])->name('fnb.laporan');
 Route::get('/fnb/laporan-penjualan/excel', [App\Http\Controllers\FnbController::class, 'exportExcel'])->name('fnb.laporan.excel');
