@@ -53,7 +53,7 @@ class DeviceController extends Controller
             if ($transaction) {
                 if ($transaction->tipe_transaksi === 'prepaid') {
                     $endTime = $transaction->waktu_Selesai;
-                    if ($endTime && $endTime > $currentTime) {
+                    if ($endTime && Carbon::parse($today . ' ' . $endTime) > Carbon::parse($today . ' ' . $currentTime)) {
                         $newStatus = 'Digunakan';
                     } else {
                         $newStatus = 'Tersedia';
