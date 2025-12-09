@@ -94,7 +94,7 @@ class DeviceController extends Controller
             ->leftJoinSub($latestTransactionsSub, 'latest_transactions', 'devices.id', '=', 'latest_transactions.device_id')
             ->orderBy('latest_transactions.latest_transaction_at', 'desc')
             ->with('playstation')
-            ->paginate(5);
+            ->paginate(9);
 
         // Count devices by status
         $countAvailable = Device::where('status', 'Tersedia')->count();

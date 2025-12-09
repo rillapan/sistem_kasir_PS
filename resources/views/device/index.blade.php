@@ -63,89 +63,87 @@
         </div>
         <!-- Card Body -->
         <div class="card-body">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th scope="col">No</th>
-                        <th scope="col">Nama Perangkat</th>
-                        <th scope="col">Jenis Playstation</th>
-                        <th scope="col">Status</th>
-                        <th scope="col">Timer</th>
-                        <th scope="col">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($devices as $device)
-                        <tr>
-                            <th scope="row">
-                                {{ ($devices->currentpage() - 1) * $devices->perpage() + $loop->index + 1 }}</th>
-                            <td @if($device->status === 'Digunakan') class="fw-bold text-warning" @endif>{{ $device->nama }}</td>
-                            <td>{{ $device->playstation->nama ?? 'Tidak Diketahui' }}</td>
-        <td id="status-{{ $device->id }}">
-            @if ($device->status === 'Tersedia')
-                <i class="fa fa-circle text-success" aria-hidden="true"></i>
-                {{ ucfirst($device->status) }}
-            @else
-                <i class="fa fa-circle text-danger" aria-hidden="true"></i>
-                {{ ucfirst($device->status) }}
-            @endif
-        </td>
-        @if ($device->status === 'Digunakan' && isset($customers[$device->id]))
-            @if ($customers[$device->id]['tipe_transaksi'] === 'prepaid' && isset($timers[$device->id]))
-                <td id="timer-{{ $device->id }}" data-type="prepaid">Memuat...</td>
-            @elseif($customers[$device->id]['tipe_transaksi'] === 'postpaid' && $customers[$device->id]['status_transaksi'] === 'berjalan')
-                <td id="timer-{{ $device->id }}" data-type="postpaid" 
-                    data-start-time="{{ $customers[$device->id]['waktu_mulai'] }}"
-                    data-start-date="{{ $customers[$device->id]['tanggal'] }}">
-                    <span id="elapsed-time-{{ $device->id }}">00:00:00</span>
-                </td>
-            @else
-                <td>-</td>
-            @endif
-        @else
-            <td>-</td>
-        @endif
-        <td>
-            @if ($device->status === 'Digunakan' && isset($customers[$device->id]))
-                <button type="button" class="btn btn-sm btn-info me-2" data-bs-toggle="modal" data-bs-target="#customerModal"
-                    data-id-transaksi="{{ $customers[$device->id]['id_transaksi'] }}"
-                    data-nama="{{ $customers[$device->id]['nama'] }}"
-                    data-nama-perangkat="{{ $customers[$device->id]['nama_perangkat'] }}"
-                    data-jenis-playstation="{{ $customers[$device->id]['jenis_playstation'] }}"
-                    data-jam-main="{{ $customers[$device->id]['jam_main'] }}"
-                    data-waktu-mulai="{{ $customers[$device->id]['waktu_mulai'] }}"
-                    data-waktu-selesai="{{ $customers[$device->id]['waktu_selesai'] }}"
-                    data-total="{{ $customers[$device->id]['total'] }}"
-                    data-tanggal="{{ $customers[$device->id]['tanggal'] }}">
-                    <i class="fas fa-eye"></i> Lihat Pelanggan
-                </button>
-            @endif
-
-                            @if (auth()->user()->status === 'admin')
-                                @if (isset($customers[$device->id]) && $customers[$device->id]['tipe_transaksi'] === 'postpaid' && $customers[$device->id]['status_transaksi'] === 'berjalan')
-                                    <form action="{{ route('transaction.end', $customers[$device->id]['id_transaksi']) }}" method="POST" class="d-inline">
-                                        @csrf
-                                        <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Apakah Anda yakin ingin menyelesaikan transaksi ini?')">
-                                            <i class="fas fa-check"></i> Selesai
+            <div class="row">
+                @foreach ($devices as $device)
+                    <div class="col-lg-4 col-md-6 mb-4">
+                        <div class="card shadow h-100">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">{{ $device->nama }}</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <strong>Jenis Playstation:</strong> {{ $device->playstation->nama ?? 'Tidak Diketahui' }}
+                                </div>
+                                <div class="mb-2" id="status-{{ $device->id }}">
+                                    <strong>Status:</strong>
+                                    @if ($device->status === 'Tersedia')
+                                        <i class="fa fa-circle text-success" aria-hidden="true"></i>
+                                        {{ ucfirst($device->status) }}
+                                    @else
+                                        <i class="fa fa-circle text-danger" aria-hidden="true"></i>
+                                        {{ ucfirst($device->status) }}
+                                    @endif
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Timer:</strong>
+                                    @if ($device->status === 'Digunakan' && isset($customers[$device->id]))
+                                        @if ($customers[$device->id]['tipe_transaksi'] === 'prepaid' && isset($timers[$device->id]))
+                                            <span id="timer-{{ $device->id }}" data-type="prepaid">Memuat...</span>
+                                        @elseif($customers[$device->id]['tipe_transaksi'] === 'postpaid' && $customers[$device->id]['status_transaksi'] === 'berjalan')
+                                            <span id="timer-{{ $device->id }}" data-type="postpaid"
+                                                data-start-time="{{ $customers[$device->id]['waktu_mulai'] }}"
+                                                data-start-date="{{ $customers[$device->id]['tanggal'] }}">
+                                                <span id="elapsed-time-{{ $device->id }}">00:00:00</span>
+                                            </span>
+                                        @else
+                                            -
+                                        @endif
+                                    @else
+                                        -
+                                    @endif
+                                </div>
+                                <div class="d-flex flex-wrap gap-1">
+                                    @if ($device->status === 'Digunakan' && isset($customers[$device->id]))
+                                        <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#customerModal"
+                                            data-id-transaksi="{{ $customers[$device->id]['id_transaksi'] }}"
+                                            data-nama="{{ $customers[$device->id]['nama'] }}"
+                                            data-nama-perangkat="{{ $customers[$device->id]['nama_perangkat'] }}"
+                                            data-jenis-playstation="{{ $customers[$device->id]['jenis_playstation'] }}"
+                                            data-jam-main="{{ $customers[$device->id]['jam_main'] }}"
+                                            data-waktu-mulai="{{ $customers[$device->id]['waktu_mulai'] }}"
+                                            data-waktu-selesai="{{ $customers[$device->id]['waktu_selesai'] }}"
+                                            data-total="{{ $customers[$device->id]['total'] }}"
+                                            data-tanggal="{{ $customers[$device->id]['tanggal'] }}">
+                                            <i class="fas fa-eye"></i> Lihat Pelanggan
                                         </button>
-                                    </form>
-                                @endif
-                                <a href="/device/{{ $device->id }}/edit" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i></a>
-                                <form action="/device/{{ $device->id }}" method="post" class="d-inline">
-                                    @method('delete')
-                                    @csrf
-                                    <button class="btn btn-sm btn-danger" onclick="return confirm('Apakah Anda yakin ingin menghapus perangkat ini?')">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
-                                </form>
-                                </td>
-                            @else
-                                <a href="/booking/{{ $device->id }}" class="btn btn-sm btn-primary">Lihat Jadwal</a>
-                            @endif
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
+                                    @endif
+
+                                    @if (auth()->user()->status === 'admin')
+                                        @if (isset($customers[$device->id]) && $customers[$device->id]['tipe_transaksi'] === 'postpaid' && $customers[$device->id]['status_transaksi'] === 'berjalan')
+                                            <form action="{{ route('transaction.end', $customers[$device->id]['id_transaksi']) }}" method="POST" class="d-inline">
+                                                @csrf
+                                                <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Apakah Anda yakin ingin menyelesaikan transaksi ini?')">
+                                                    <i class="fas fa-check"></i> Selesai
+                                                </button>
+                                            </form>
+                                        @endif
+                                        <a href="/device/{{ $device->id }}/edit" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i></a>
+                                        <form action="/device/{{ $device->id }}" method="post" class="d-inline">
+                                            @method('delete')
+                                            @csrf
+                                            <button class="btn btn-sm btn-danger" onclick="return confirm('Apakah Anda yakin ingin menghapus perangkat ini?')">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </form>
+                                    @else
+                                        <a href="/booking/{{ $device->id }}" class="btn btn-sm btn-primary">Lihat Jadwal</a>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
             {{ $devices->links() }}
         </div>
     </div>

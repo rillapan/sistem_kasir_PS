@@ -1,12 +1,8 @@
-# TODO: Fix Grafik Pendapatan Hari Ini
+# TODO: Display Device Data in Card Format
 
-## Completed Tasks
+## Tasks
 
--   [x] Analyze the current implementation and identify the missing chart initialization
--   [x] Add JavaScript code to initialize the area chart with hourly revenue data
--   [x] Configure chart options with proper formatting for Indonesian Rupiah
-
-## Pending Tasks
-
--   [ ] Test the chart display on the homepage (http://127.0.0.1:8000/home)
--   [ ] Verify that the hourly data is accurate and updates in real-time
+-   [ ] Modify `resources/views/device/index.blade.php` to replace table with card layout for each device
+-   [ ] Ensure each card displays: Device name, Playstation type, Status with icon, Timer (if applicable), Action buttons
+-   [ ] Preserve pagination, summary cards, modal, and JavaScript functionality
+-   [ ] Test the updated view for correct display and functionality
