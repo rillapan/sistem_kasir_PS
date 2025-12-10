@@ -72,3 +72,11 @@ Route::resource('/expense-category', App\Http\Controllers\ExpenseCategoryControl
 // Custom Package Routes
 Route::resource('/custom-package', App\Http\Controllers\CustomPackageController::class)->middleware('auth');
 Route::put('/custom-package/{id}/toggle-status', [App\Http\Controllers\CustomPackageController::class, 'toggleStatus'])->name('custom-package.toggle-status')->middleware('auth');
+
+// Server time API route for timer synchronization
+Route::get('/server-time', function() {
+    return response()->json([
+        'server_time' => now()->toISOString(),
+        'server_timestamp' => now()->timestamp * 1000 // in milliseconds
+    ]);
+})->middleware('auth');

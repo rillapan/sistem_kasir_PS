@@ -30,7 +30,8 @@ class Transaction extends Model
         'payment_method',
         'tipe_transaksi',
         'custom_package_id',
-        'diskon'
+        'diskon',
+        'lost_time_start'
     ];
 
     public function device()

@@ -263,6 +263,7 @@ class TransactionController extends Controller
             $validatedData['waktu_Selesai'] = null;
             $validatedData['jam_main'] = null;
             $validatedData['status_transaksi'] = 'berjalan';
+            $validatedData['lost_time_start'] = Carbon::now();
             // For postpaid, total is calculated from FnB items only (no device cost initially)
             $validatedData['total'] = $request->total ?? 0;
         }

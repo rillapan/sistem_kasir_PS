@@ -197,7 +197,8 @@ class DeviceController extends Controller
                     elseif ($transaction->tipe_transaksi === 'postpaid' && $transaction->status_transaksi === 'berjalan') {
                         $postpaidTransactions[$dev->id] = [
                             'start_time' => $transaction->waktu_mulai,
-                            'start_date' => $transaction->created_at->format('Y-m-d')
+                            'start_date' => $transaction->created_at->format('Y-m-d'),
+                            'lost_time_start' => $transaction->lost_time_start
                         ];
                     }
                     
@@ -224,6 +225,7 @@ class DeviceController extends Controller
             'devices' => $devices,
             'timers' => $timers,
             'customers' => $customers,
+            'postpaidTransactions' => $postpaidTransactions,
             'countAvailable' => $countAvailable,
             'countInUse' => $countInUse,
             'availableDevices' => $availableDevices,

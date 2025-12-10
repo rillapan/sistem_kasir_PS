@@ -122,8 +122,7 @@
                                             <span id="timer-{{ $device->id }}" data-type="{{ $customers[$device->id]['tipe_transaksi'] }}">Memuat...</span>
                                         @elseif($customers[$device->id]['tipe_transaksi'] === 'postpaid' && $customers[$device->id]['status_transaksi'] === 'berjalan')
                                             <span id="timer-{{ $device->id }}" data-type="postpaid"
-                                                data-start-time="{{ $customers[$device->id]['waktu_mulai'] }}"
-                                                data-start-date="{{ $customers[$device->id]['tanggal'] }}">
+                                                data-lost-time-start="{{ isset($postpaidTransactions[$device->id]) ? $postpaidTransactions[$device->id]['lost_time_start'] : '' }}">
                                                 <span id="elapsed-time-{{ $device->id }}">00:00:00</span>
                                             </span>
                                         @else
@@ -255,13 +254,15 @@
             tick();
         }
 
-        // Function to update postpaid timer (elapsed time)
-        function updatePostpaidTimer(deviceId, startDate, startTime) {
-            const startDateTime = new Date(`${startDate} ${startTime}`);
+        // Function to update postpaid timer (elapsed time from 00:00:00)
+        function updatePostpaidTimer(deviceId, lostTimeStart) {
+            // Parse the lost_time_start timestamp
+            const startTimestamp = new Date(lostTimeStart).getTime();
             
             function updateElapsedTime() {
-                const now = new Date();
-                const diffMs = now - startDateTime;
+                // Calculate elapsed time from lost_time_start
+                const now = Date.now();
+                const diffMs = now - startTimestamp;
                 
                 if (diffMs < 0) {
                     // If the start time is in the future, show 00:00:00
@@ -276,7 +277,8 @@
                     document.getElementById(`elapsed-time-${deviceId}`).textContent = `${hours}:${minutes}:${seconds}`;
                 }
                 
-                requestAnimationFrame(updateElapsedTime);
+                // Update every second
+                setTimeout(updateElapsedTime, 1000);
             }
             
             updateElapsedTime();
@@ -297,11 +299,10 @@
             // Initialize postpaid timers
             document.querySelectorAll('[data-type="postpaid"]').forEach(timerElement => {
                 const deviceId = timerElement.id.replace('timer-', '');
-                const startTime = timerElement.dataset.startTime;
-                const startDate = timerElement.dataset.startDate;
+                const lostTimeStart = timerElement.dataset.lostTimeStart;
                 
-                if (startTime && startDate) {
-                    updatePostpaidTimer(deviceId, startDate, startTime);
+                if (lostTimeStart) {
+                    updatePostpaidTimer(deviceId, lostTimeStart);
                 }
             });
         });
