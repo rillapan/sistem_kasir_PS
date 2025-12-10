@@ -475,7 +475,9 @@ class TransactionController extends Controller
 
             $costPerMinute = $transaction->harga / 60;
             $totalPs = $durationMinutes * $costPerMinute;
-            $roundedTotalPs = ceil($totalPs / 1000) * 1000; // Round up to nearest 1000
+            
+            // Apply specific rounding rules for lost time
+            $roundedTotalPs = $this->applyLostTimeRounding($totalPs);
             $total = $roundedTotalPs + $totalFnb;
 
             $hours = floor($durationMinutes / 60);
@@ -539,81 +541,107 @@ class TransactionController extends Controller
         ]);
     }
 
-public function storeOrder(Request $request, $id)
-{
-    $transaction = Transaction::findOrFail($id);
-    
-    if ($transaction->payment_status !== 'unpaid') {
-        return redirect()->route('transaction.index')->with('error', 'Hanya bisa menambahkan pesanan untuk transaksi yang belum dibayar.');
-    }
-
-    $request->validate([
-        'items' => 'required|array|min:1',
-        'items.*.fnb_id' => 'required|exists:fnbs,id',
-        'items.*.qty' => 'required|integer|min:1',
-    ]);
-
-    $totalAdded = 0;
-    
-    // Process each item in the order
-    foreach ($request->items as $item) {
-        $fnb = Fnb::findOrFail($item['fnb_id']);
-        $qty = (int)$item['qty'];
+    public function storeOrder(Request $request, $id)
+    {
+        $transaction = Transaction::findOrFail($id);
         
-        // Check stock only if not unlimited (stok != -1)
-        if ($fnb->stok != -1 && $fnb->stok < $qty) {
-            return redirect()->back()
-                ->with('error', 'Stok ' . $fnb->nama . ' tidak mencukupi. Stok tersedia: ' . $fnb->stok);
+        if ($transaction->payment_status !== 'unpaid') {
+            return redirect()->route('transaction.index')->with('error', 'Hanya bisa menambahkan pesanan untuk transaksi yang belum dibayar.');
         }
 
-        // Check if this FNB is already in the transaction
-        $transactionFnb = TransactionFnb::where('transaction_id', $transaction->id_transaksi)
-            ->where('fnb_id', $fnb->id)
-            ->first();
-
-        if ($transactionFnb) {
-            // Update existing FNB in the transaction
-            $transactionFnb->qty += $qty;
-            $transactionFnb->save();
-        } else {
-            // Create new transaction FNB
-            $transactionFnb = new TransactionFnb([
-                'transaction_id' => $transaction->id_transaksi,
-                'fnb_id' => $fnb->id,
-                'qty' => $qty,
-                'harga_jual' => $fnb->harga_jual,
-                'harga_beli' => $fnb->harga_beli
-            ]);
-            $transactionFnb->save();
-        }
-
-        // Update FNB stock only if not unlimited (stok != -1)
-        if ($fnb->stok != -1) {
-            $fnb->stok -= $qty;
-            $fnb->save();
-        }
-
-        // Create stock mutation
-        StockMutation::create([
-            'fnb_id' => $fnb->id,
-            'type' => 'out',
-            'qty' => $qty,
-            'date' => now()->toDateString(),
-            'note' => 'Penjualan - Transaksi #' . $transaction->id_transaksi
+        $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.fnb_id' => 'required|exists:fnbs,id',
+            'items.*.qty' => 'required|integer|min:1',
         ]);
 
-        $totalAdded++;
+        $totalAdded = 0;
+        
+        // Process each item in the order
+        foreach ($request->items as $item) {
+            $fnb = Fnb::findOrFail($item['fnb_id']);
+            $qty = (int)$item['qty'];
+            
+            // Check stock only if not unlimited (stok != -1)
+            if ($fnb->stok != -1 && $fnb->stok < $qty) {
+                return redirect()->back()
+                    ->with('error', 'Stok ' . $fnb->nama . ' tidak mencukupi. Stok tersedia: ' . $fnb->stok);
+            }
+
+            // Check if this FNB is already in the transaction
+            $transactionFnb = TransactionFnb::where('transaction_id', $transaction->id_transaksi)
+                ->where('fnb_id', $fnb->id)
+                ->first();
+
+            if ($transactionFnb) {
+                // Update existing FNB in the transaction
+                $transactionFnb->qty += $qty;
+                $transactionFnb->save();
+            } else {
+                // Create new transaction FNB
+                $transactionFnb = new TransactionFnb([
+                    'transaction_id' => $transaction->id_transaksi,
+                    'fnb_id' => $fnb->id,
+                    'qty' => $qty,
+                    'harga_jual' => $fnb->harga_jual,
+                    'harga_beli' => $fnb->harga_beli
+                ]);
+                $transactionFnb->save();
+            }
+
+            // Update FNB stock only if not unlimited (stok != -1)
+            if ($fnb->stok != -1) {
+                $fnb->stok -= $qty;
+                $fnb->save();
+            }
+
+            // Create stock mutation
+            StockMutation::create([
+                'fnb_id' => $fnb->id,
+                'type' => 'out',
+                'qty' => $qty,
+                'date' => now()->toDateString(),
+                'note' => 'Penjualan - Transaksi #' . $transaction->id_transaksi
+            ]);
+
+            $totalAdded++;
+        }
+
+        // Recalculate the total for the transaction (PS cost + FNB total)
+        $fnbTotal = TransactionFnb::where('transaction_id', $transaction->id_transaksi)
+            ->selectRaw('SUM(qty * harga_jual) as total')
+            ->value('total') ?? 0;
+
+        $transaction->total = $transaction->harga + $fnbTotal;
+        $transaction->save();
+
+        return redirect()->route('transaction.showPayment', $transaction->id_transaksi)
+            ->with('success', $totalAdded . ' item pesanan berhasil ditambahkan');
     }
 
-    // Recalculate the total for the transaction (PS cost + FNB total)
-    $fnbTotal = TransactionFnb::where('transaction_id', $transaction->id_transaksi)
-        ->selectRaw('SUM(qty * harga_jual) as total')
-        ->value('total') ?? 0;
-
-    $transaction->total = $transaction->harga + $fnbTotal;
-    $transaction->save();
-
-    return redirect()->route('transaction.showPayment', $transaction->id_transaksi)
-        ->with('success', $totalAdded . ' item pesanan berhasil ditambahkan');
-}
+    /**
+     * Apply specific rounding rules for lost time pricing
+     * If difference <= 500, round to 500
+     * If difference > 500, round to 1000
+     */
+    private function applyLostTimeRounding($total)
+    {
+        // Find the nearest lower thousand
+        $lowerThousand = floor($total / 1000) * 1000;
+        
+        // Calculate difference from the lower thousand
+        $difference = $total - $lowerThousand;
+        
+        // Apply rounding rules
+        if ($difference == 0) {
+            // Already a perfect thousand
+            return $total;
+        } elseif ($difference <= 500) {
+            // Round up to 500 (including exactly 500)
+            return $lowerThousand + 500;
+        } else {
+            // Round up to next thousand
+            return $lowerThousand + 1000;
+        }
+    }
 }
