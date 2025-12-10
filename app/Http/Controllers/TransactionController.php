@@ -390,7 +390,31 @@ class TransactionController extends Controller
      */
     public function edit($id)
     {
-        //
+        $transaction = Transaction::with(['device.playstation', 'custom_package'])->findOrFail($id);
+        
+        // Only allow editing unpaid transactions
+        if ($transaction->payment_status !== 'unpaid') {
+            return redirect()->route('transaction.index')->with('gagal', 'Hanya transaksi yang belum dibayar yang dapat diedit.');
+        }
+        
+        // Get only available devices + the current device being used by this transaction
+        $devices = Device::with('playstation')
+            ->where(function($query) use ($transaction) {
+                $query->where('status', 'Tersedia')
+                      ->orWhere('id', $transaction->device_id);
+            })
+            ->get();
+        
+        // Get all custom packages for custom_package type
+        $customPackages = CustomPackage::active()->with(['playstations', 'fnbs'])->get();
+        
+        return view('transaction.edit', [
+            'title' => 'Edit Transaksi',
+            'active' => 'transaction',
+            'transaction' => $transaction,
+            'devices' => $devices,
+            'customPackages' => $customPackages
+        ]);
     }
 
     /**
@@ -402,7 +426,146 @@ class TransactionController extends Controller
      */
     public function update(Request $request, $id)
     {
-        //
+        $transaction = Transaction::findOrFail($id);
+        
+        // Only allow editing unpaid transactions
+        if ($transaction->payment_status !== 'unpaid') {
+            return redirect()->route('transaction.index')->with('gagal', 'Hanya transaksi yang belum dibayar yang dapat diedit.');
+        }
+        
+        $validatedData = $request->validate([
+            'tipe_transaksi' => 'required|in:prepaid,postpaid,custom_package',
+            'device_id' => 'required|exists:devices,id',
+            'jam_main' => 'nullable|integer|min:1',
+            'custom_package_id' => 'nullable|exists:custom_packages,id'
+        ]);
+        
+        $oldDeviceId = $transaction->device_id;
+        $newDeviceId = $validatedData['device_id'];
+        $oldTipeTransaksi = $transaction->tipe_transaksi;
+        $newTipeTransaksi = $validatedData['tipe_transaksi'];
+        
+        // Get the new device
+        $newDevice = Device::with('playstation')->findOrFail($newDeviceId);
+        
+        // Check if new device is available (or if it's the same device)
+        if ($newDevice->status !== 'Tersedia' && $newDeviceId != $oldDeviceId) {
+            return redirect()->back()->with('gagal', 'Perangkat yang dipilih tidak tersedia.');
+        }
+        
+        // Prepare update data
+        $updateData = [
+            'device_id' => $newDeviceId,
+            'tipe_transaksi' => $newTipeTransaksi,
+        ];
+        
+        // Handle transaction type changes
+        if ($newTipeTransaksi === 'postpaid') {
+            // Changed to Lost Time
+            $updateData['harga'] = $newDevice->playstation->harga ?? 0;
+            $updateData['jam_main'] = null;
+            $updateData['waktu_Selesai'] = null;
+            $updateData['status_transaksi'] = 'berjalan';
+            
+            // Keep the original lost_time_start if it exists, otherwise set it based on waktu_mulai
+            // This ensures timer continues from the original start time
+            if (!$transaction->lost_time_start) {
+                // Calculate lost_time_start from waktu_mulai to maintain consistency
+                $waktuMulaiCarbon = Carbon::parse($transaction->created_at->toDateString() . ' ' . $transaction->waktu_mulai);
+                $updateData['lost_time_start'] = $waktuMulaiCarbon;
+            }
+            // If lost_time_start already exists, don't change it - timer continues
+            
+            // For postpaid, total is FnB only initially (device cost calculated on end)
+            $fnbTotal = $transaction->getFnbTotalAttribute();
+            $updateData['total'] = $fnbTotal;
+
+        } elseif ($newTipeTransaksi === 'prepaid') {
+            // Changed to Paket OR updating existing Paket
+            $jamMain = $validatedData['jam_main'] ?? 1;
+            $hargaPerJam = $newDevice->playstation->harga ?? 0;
+            $totalPs = $hargaPerJam * $jamMain;
+            $fnbTotal = $transaction->getFnbTotalAttribute();
+            
+            $updateData['jam_main'] = $jamMain;
+            $updateData['harga'] = $hargaPerJam;
+            $updateData['total'] = $totalPs + $fnbTotal;
+            $updateData['status_transaksi'] = 'sukses';
+            
+            // Calculate elapsed time from waktu_mulai
+            $waktuMulaiCarbon = Carbon::parse($transaction->created_at->toDateString() . ' ' . $transaction->waktu_mulai);
+            $now = Carbon::now();
+            $elapsedMinutes = $waktuMulaiCarbon->diffInMinutes($now);
+            
+            // Calculate new end time: now + (jam_main in minutes - elapsed minutes)
+            // This makes the timer show remaining time (countdown)
+            $jamMainMinutes = $jamMain * 60;
+            $remainingMinutes = $jamMainMinutes - $elapsedMinutes;
+            
+            if ($remainingMinutes > 0) {
+                // There's still time remaining
+                $updateData['waktu_Selesai'] = $now->copy()->addMinutes($remainingMinutes)->format('H:i');
+            } else {
+                // Time already exceeded, set end time to now (will be marked as overtime)
+                $updateData['waktu_Selesai'] = $now->format('H:i');
+            }
+            
+        } elseif ($newTipeTransaksi === 'custom_package') {
+            // Changed to Custom Package
+            $customPackageId = $validatedData['custom_package_id'] ?? null;
+            
+            if (!$customPackageId) {
+                return redirect()->back()->with('gagal', 'Silakan pilih paket custom.');
+            }
+            
+            $customPackage = CustomPackage::with(['playstations', 'fnbs'])->findOrFail($customPackageId);
+            
+            // Validate device is compatible with package
+            $playstationIds = $customPackage->playstations->pluck('id');
+            if (!$playstationIds->contains($newDevice->playstation_id)) {
+                return redirect()->back()->with('gagal', 'Perangkat yang dipilih tidak sesuai dengan paket custom.');
+            }
+            
+            $totalJamMain = $customPackage->playstations->sum('pivot.lama_main');
+            
+            $updateData['custom_package_id'] = $customPackageId;
+            $updateData['harga'] = $customPackage->harga_total;
+            $updateData['total'] = $customPackage->harga_total;
+            $updateData['jam_main'] = $totalJamMain;
+            $updateData['status_transaksi'] = 'sukses';
+            
+            // Calculate elapsed time from waktu_mulai
+            $waktuMulaiCarbon = Carbon::parse($transaction->created_at->toDateString() . ' ' . $transaction->waktu_mulai);
+            $now = Carbon::now();
+            $elapsedMinutes = $waktuMulaiCarbon->diffInMinutes($now);
+            
+            // Calculate new end time: now + (package duration - elapsed time)
+            $remainingMinutes = $totalJamMain - $elapsedMinutes;
+            
+            if ($remainingMinutes > 0) {
+                $updateData['waktu_Selesai'] = $now->copy()->addMinutes($remainingMinutes)->format('H:i');
+            } else {
+                $updateData['waktu_Selesai'] = $now->format('H:i');
+            }
+        }
+
+        
+        // Update the transaction
+        $transaction->update($updateData);
+        
+        // Handle device status changes
+        if ($oldDeviceId != $newDeviceId) {
+            // Release old device
+            $oldDevice = Device::find($oldDeviceId);
+            if ($oldDevice) {
+                $oldDevice->update(['status' => 'Tersedia']);
+            }
+            
+            // Mark new device as in use
+            $newDevice->update(['status' => 'Digunakan']);
+        }
+        
+        return redirect()->route('transaction.index')->with('success', 'Transaksi berhasil diupdate. Timer tetap berjalan.');
     }
 
     /**

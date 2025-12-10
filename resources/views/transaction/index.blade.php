@@ -241,6 +241,11 @@
                                             </a>
                                         @endif
                                         @if($transaksi->payment_status === 'unpaid')
+                                            <a href="{{ route('transaction.edit', $transaksi->id_transaksi) }}" class="btn btn-warning btn-sm" title="Edit">
+                                                <i class="fas fa-edit"></i> Edit
+                                            </a>
+                                        @endif
+                                        @if($transaksi->payment_status === 'unpaid')
                                             <a href="{{ route('transaction.add-order', $transaksi->id_transaksi) }}" class="btn btn-primary btn-sm" title="Tambah Pesanan">
                                                 <i class="fas fa-plus"></i> Tambah Pesanan
                                             </a>
