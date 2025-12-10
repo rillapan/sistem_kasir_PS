@@ -134,7 +134,15 @@
                             <td>{{ $transaksi->nama }}</td>
                             <td>{{ $transaksi->device ? $transaksi->device->nama : 'N/A' }}</td>
                             <td>{{ $transaksi->device && $transaksi->device->playstation ? $transaksi->device->playstation->nama : 'N/A' }}</td>
-                            <td>{{ $transaksi->tipe_transaksi === 'prepaid' ? 'Paket' : 'Lost Time' }}</td>
+                            <td>
+                                @if($transaksi->tipe_transaksi === 'prepaid')
+                                    Paket
+                                @elseif($transaksi->tipe_transaksi === 'custom_package')
+                                    Custom Paket
+                                @else
+                                    Lost Time
+                                @endif
+                            </td>
                             <td>{{ $transaksi->jam_main ? $transaksi->jam_main . ' Jam' : '-' }}</td>
                             <td>{{ $transaksi->waktu_mulai }}</td>
                             <td>{{ $transaksi->waktu_Selesai ?: '-' }}</td>

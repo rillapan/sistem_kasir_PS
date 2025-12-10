@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Playstation;
+use App\Models\Fnb;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -21,9 +23,9 @@ class CustomPackage extends Model
         'is_active' => 'boolean',
     ];
 
-    public function devices()
+    public function playstations()
     {
-        return $this->belongsToMany(Device::class, 'custom_package_device')
+        return $this->belongsToMany(Playstation::class, 'custom_package_playstation')
             ->withPivot('lama_main')
             ->withTimestamps();
     }

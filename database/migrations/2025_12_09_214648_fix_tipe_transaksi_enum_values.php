@@ -3,9 +3,8 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\DB;
 
-class UpdateTipeTransaksiEnumInTransactionsTable extends Migration
+class FixTipeTransaksiEnumValues extends Migration
 {
     /**
      * Run the migrations.
@@ -24,6 +23,6 @@ class UpdateTipeTransaksiEnumInTransactionsTable extends Migration
      */
     public function down()
     {
-        DB::statement("ALTER TABLE transactions MODIFY COLUMN tipe_transaksi ENUM('prepaid', 'postpaid') DEFAULT 'prepaid'");
+        DB::statement("ALTER TABLE transactions MODIFY COLUMN tipe_transaksi ENUM('prepaid', 'postpaid', 'custom_paket') DEFAULT 'prepaid'");
     }
 }

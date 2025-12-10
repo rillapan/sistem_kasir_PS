@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CustomPackage;
-use App\Models\Device;
+use App\Models\Playstation;
 use App\Models\Fnb;
 use Illuminate\Http\Request;
 
@@ -11,7 +11,7 @@ class CustomPackageController extends Controller
 {
     public function index()
     {
-        $packages = CustomPackage::with(['devices', 'fnbs'])->get();
+        $packages = CustomPackage::with(['playstations', 'fnbs'])->get();
         return view('custom-package.index', [
             'title' => 'Custom Paket',
             'active' => 'custom-package',
@@ -21,12 +21,12 @@ class CustomPackageController extends Controller
 
     public function create()
     {
-        $devices = Device::with('playstation')->get();
+        $playstations = Playstation::all();
         $fnbs = Fnb::all();
         return view('custom-package.create', [
             'title' => 'Tambah Custom Paket',
             'active' => 'custom-package',
-            'devices' => $devices,
+            'playstations' => $playstations,
             'fnbs' => $fnbs
         ]);
     }
@@ -37,9 +37,9 @@ class CustomPackageController extends Controller
             'nama_paket' => 'required|string|max:255',
             'harga_total' => 'required|numeric|min:0',
             'deskripsi' => 'nullable|string',
-            'devices' => 'required|array|min:1',
-            'devices.*.id' => 'required|exists:devices,id',
-            'devices.*.lama_main' => 'required|integer|min:1',
+            'playstations' => 'required|array|min:1',
+            'playstations.*.id' => 'required|exists:playstations,id',
+            'playstations.*.lama_main' => 'required|integer|min:1',
             'fnbs' => 'array',
             'fnbs.*.id' => 'exists:fnbs,id',
             'fnbs.*.quantity' => 'integer|min:1',
@@ -52,11 +52,11 @@ class CustomPackageController extends Controller
             'is_active' => true,
         ]);
 
-        // Attach devices
-        if ($request->has('devices')) {
-            foreach ($request->devices as $device) {
-                $package->devices()->attach($device['id'], [
-                    'lama_main' => $device['lama_main']
+        // Attach playstations
+        if ($request->has('playstations')) {
+            foreach ($request->playstations as $playstation) {
+                $package->playstations()->attach($playstation['id'], [
+                    'lama_main' => $playstation['lama_main']
                 ]);
             }
         }
@@ -69,14 +69,12 @@ class CustomPackageController extends Controller
                 ]);
             }
         }
-
-        return redirect()->route('custom-package.index')
-            ->with('success', 'Paket kustom berhasil dibuat!');
+        return redirect('transaction')->with('success', 'Data transaksi berhasil disimpan.');
     }
 
     public function show($id)
     {
-        $package = CustomPackage::with(['devices.playstation', 'fnbs'])->findOrFail($id);
+        $package = CustomPackage::with(['playstations', 'fnbs'])->findOrFail($id);
         
         // Check if this is an API request
         if (request()->expectsJson()) {
@@ -92,14 +90,14 @@ class CustomPackageController extends Controller
 
     public function edit($id)
     {
-        $package = CustomPackage::with(['devices', 'fnbs'])->findOrFail($id);
-        $devices = Device::with('playstation')->get();
+        $package = CustomPackage::with(['playstations', 'fnbs'])->findOrFail($id);
+        $playstations = Playstation::all();
         $fnbs = Fnb::all();
         return view('custom-package.edit', [
             'title' => 'Edit Custom Paket',
             'active' => 'custom-package',
             'package' => $package,
-            'devices' => $devices,
+            'playstations' => $playstations,
             'fnbs' => $fnbs
         ]);
     }
@@ -110,9 +108,9 @@ class CustomPackageController extends Controller
             'nama_paket' => 'required|string|max:255',
             'harga_total' => 'required|numeric|min:0',
             'deskripsi' => 'nullable|string',
-            'devices' => 'required|array|min:1',
-            'devices.*.id' => 'required|exists:devices,id',
-            'devices.*.lama_main' => 'required|integer|min:1',
+            'playstations' => 'required|array|min:1',
+            'playstations.*.id' => 'required|exists:playstations,id',
+            'playstations.*.lama_main' => 'required|integer|min:1',
             'fnbs' => 'array',
             'fnbs.*.id' => 'exists:fnbs,id',
             'fnbs.*.quantity' => 'integer|min:1',
@@ -125,12 +123,12 @@ class CustomPackageController extends Controller
             'deskripsi' => $request->deskripsi,
         ]);
 
-        // Sync devices
-        $deviceData = [];
-        foreach ($request->devices as $device) {
-            $deviceData[$device['id']] = ['lama_main' => $device['lama_main']];
+        // Sync playstations
+        $playstationData = [];
+        foreach ($request->playstations as $playstation) {
+            $playstationData[$playstation['id']] = ['lama_main' => $playstation['lama_main']];
         }
-        $package->devices()->sync($deviceData);
+        $package->playstations()->sync($playstationData);
 
         // Sync F&B items
         $fnbData = [];
@@ -163,4 +161,6 @@ class CustomPackageController extends Controller
         return redirect()->route('custom-package.index')
             ->with('success', 'Status paket berhasil diperbarui!');
     }
+
+    
 }

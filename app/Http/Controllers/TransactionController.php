@@ -8,6 +8,7 @@ use App\Models\Transaction;
 use App\Models\Fnb;
 use App\Models\TransactionFnb;
 use App\Models\StockMutation;
+use App\Models\CustomPackage;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -75,7 +76,7 @@ class TransactionController extends Controller
             $query->where('tipe_transaksi', $type);
         }
 
-        $transaction = $query->latest()->paginate(5);
+        $transaction = $query->latest()->paginate(10);
 
         // Calculate counts for transaction types and payment statuses
         $postpaidCount = Transaction::where('tipe_transaksi', 'postpaid')->count();
@@ -124,6 +125,7 @@ class TransactionController extends Controller
         $noDevices = $device->isEmpty();
         $playstation = Playstation::all();
         $fnbs = Fnb::all();
+        $customPackages = CustomPackage::active()->with(['playstations', 'fnbs'])->get();
 
         $now = Carbon::now();
         $currentTime = $now->format('H:i');
@@ -135,7 +137,8 @@ class TransactionController extends Controller
             'devices' => $device,
             'noDevices' => $noDevices,
             'currentTime' => $currentTime,
-            'fnbs' => $fnbs
+            'fnbs' => $fnbs,
+            'customPackages' => $customPackages
         ]);
     }
 
@@ -176,13 +179,14 @@ class TransactionController extends Controller
         $validatedData = $request->validate([
             'nama' => 'required',
             'no_telepon' => 'nullable|string|max:20',
-            'device_id' => 'required',
+            'device_id' => 'required_if:tipe_transaksi,prepaid,postpaid,custom_package|exists:devices,id',
+            'custom_package_id' => 'required_if:tipe_transaksi,custom_package|exists:custom_packages,id',
             'user_id' => 'nullable|exists:users,id',
-            'harga' => 'required',
-            'jam_main' => 'nullable|max:2',
-            'total' => 'nullable',
+            'harga' => 'required_if:tipe_transaksi,prepaid,custom_package|nullable',
+            'jam_main' => 'required_if:tipe_transaksi,prepaid|nullable|max:2',
+            'total' => 'required',
             'status_transaksi' => 'nullable',
-            'tipe_transaksi' => 'required|in:prepaid,postpaid',
+            'tipe_transaksi' => 'required|in:prepaid,postpaid,custom_package',
             'fnb_ids.*' => 'nullable|exists:fnbs,id',
             'fnbs_qty.*' => 'nullable|integer|min:1',
             'fnbs_harga.*' => 'nullable|integer|min:0'
@@ -192,17 +196,56 @@ class TransactionController extends Controller
         $validatedData['waktu_mulai'] = $start_time;
         $validatedData['tipe_transaksi'] = $request->tipe_transaksi;
 
-        if ($request->tipe_transaksi === 'prepaid') {
+        if ($request->tipe_transaksi === 'custom_package') {
+            $customPackage = CustomPackage::with(['playstations', 'fnbs'])->findOrFail($request->custom_package_id);
+
+            // Validate that device_id is provided and exists
+            if (!$request->device_id) {
+                return redirect()->back()->with('gagal', 'Silakan pilih perangkat terlebih dahulu.');
+            }
+
+            // Get the selected device and validate it belongs to the package's PlayStation types
+            $selectedDevice = Device::findOrFail($request->device_id);
+            $playstationIds = $customPackage->playstations->pluck('id');
+            
+            if (!$playstationIds->contains($selectedDevice->playstation_id)) {
+                return redirect()->back()->with('gagal', 'Perangkat yang dipilih tidak sesuai dengan paket custom.');
+            }
+
+            if ($selectedDevice->status !== 'Tersedia') {
+                return redirect()->back()->with('gagal', 'Perangkat yang dipilih tidak tersedia.');
+            }
+
+            $validatedData['device_id'] = $selectedDevice->id;
+            $validatedData['custom_package_id'] = $customPackage->id;
+            $validatedData['harga'] = $customPackage->harga_total;
+            $validatedData['total'] = $customPackage->harga_total;
+            $validatedData['status_transaksi'] = 'sukses';
+
+            // Calculate total playtime from package
+            $totalJamMain = $customPackage->playstations->sum('pivot.lama_main');
+            $validatedData['jam_main'] = $totalJamMain;
+            $validatedData['waktu_Selesai'] = Carbon::parse($start_time)->addHours($totalJamMain)->format('H:i');
+
+        } elseif ($request->tipe_transaksi === 'prepaid') {
             $validatedData['waktu_Selesai'] = $end_time;
             $validatedData['jam_main'] = $jam_main;
             $validatedData['total'] = $request->total;
             $validatedData['status_transaksi'] = 'sukses';
-        } else {
-            // Postpaid
+        } elseif ($request->tipe_transaksi === 'postpaid') {
+            // Postpaid (Lost Time) - device is now required
+            $device = Device::findOrFail($request->device_id);
+            if ($device->status !== 'Tersedia') {
+                return redirect()->back()->with('gagal', 'Perangkat yang dipilih tidak tersedia.');
+            }
+            
+            $validatedData['device_id'] = $device->id;
+            $validatedData['harga'] = $device->playstation->harga ?? 0;
             $validatedData['waktu_Selesai'] = null;
             $validatedData['jam_main'] = null;
-            $validatedData['total'] = 0; // Will be calculated later
             $validatedData['status_transaksi'] = 'berjalan';
+            // For postpaid, total is calculated from FnB items only (no device cost initially)
+            $validatedData['total'] = $request->total ?? 0;
         }
 
         // Set user_id if not provided
@@ -213,14 +256,51 @@ class TransactionController extends Controller
         unset($validatedData['fnbs_qty']);
         unset($validatedData['fnbs_harga']);
 
-        $transaction = Transaction::create($validatedData);
+        try {
+            $transaction = Transaction::create($validatedData);
+        } catch (\Exception $e) {
+            return redirect()->back()->with('gagal', 'Gagal menyimpan transaksi: ' . $e->getMessage());
+        }
 
         // Handle FnB items
-        if ($request->has('fnb_ids')) {
+        if ($request->tipe_transaksi === 'custom_package') {
+            // For custom packages, add FnB items from the package
+            $customPackage = CustomPackage::with('fnbs')->findOrFail($request->custom_package_id);
+            foreach ($customPackage->fnbs as $fnb) {
+                $qty = $fnb->pivot->quantity;
+
+                // Check stock only if not unlimited (stok != -1)
+                if ($fnb->stok != -1 && $fnb->stok < $qty) {
+                    return back()->with('gagal', 'Stok FnB tidak cukup untuk ' . $fnb->nama . ' dalam paket custom');
+                }
+
+                TransactionFnb::create([
+                    'transaction_id' => $transaction->id_transaksi,
+                    'fnb_id' => $fnb->id,
+                    'qty' => $qty,
+                    'harga_jual' => $fnb->harga_jual
+                ]);
+
+                // Update stock only if not unlimited (stok != -1)
+                if ($fnb->stok != -1) {
+                    $fnb->decrement('stok', $qty);
+                }
+
+                // Create stock mutation
+                StockMutation::create([
+                    'fnb_id' => $fnb->id,
+                    'type' => 'out',
+                    'qty' => $qty,
+                    'date' => now()->toDateString(),
+                    'note' => 'Penjualan transaksi custom package #' . $transaction->id_transaksi
+                ]);
+            }
+        } elseif ($request->has('fnb_ids')) {
+            // For regular transactions, handle FnB from form
             foreach ($request->fnb_ids as $index => $fnb_id) {
                 if ($fnb_id && $request->fnbs_qty[$index] > 0) {
                     $fnb = Fnb::findOrFail($fnb_id);
-                    
+
                     // Check stock only if not unlimited (stok != -1)
                     if ($fnb->stok != -1 && $fnb->stok < $request->fnbs_qty[$index]) {
                         return back()->with('gagal', 'Stok FnB tidak cukup untuk ' . $fnb->nama);
@@ -250,22 +330,19 @@ class TransactionController extends Controller
             }
         }
 
-        $device = Device::find($request->device_id);
-        $device->update(['status' => 'Digunakan']);
-
-        if ($request->action === 'simpan') {
-            // Save transaction for later payment
-            return redirect('transaction')->with('success', 'Data transaksi berhasil disimpan untuk pembayaran nanti.');
-        } elseif ($request->action === 'bayar') {
-            // Redirect to payment page
-            return redirect()->route('transaction.showPayment', $transaction->id_transaksi);
+        $device = Device::find($validatedData['device_id']);
+        if ($device) {
+            $device->update(['status' => 'Digunakan']);
         }
 
-        if ($request->transaksi) {
+        // Handle different actions
+        if ($request->action === 'bayar') {
+            // Redirect to payment page for immediate payment
+            return redirect()->route('transaction.showPayment', $transaction->id_transaksi);
+        } else {
+            // Save transaction and redirect to transaction list
             return redirect('transaction')->with('success', 'Data transaksi berhasil disimpan.');
         }
-
-        return redirect('booking/' . $request->device_id)->with('success', 'Berhasil melakukan Booking.');
     }
 
     /**

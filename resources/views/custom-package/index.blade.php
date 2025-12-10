@@ -38,7 +38,7 @@
                     <tr>
                         <th scope="col">Nama Paket</th>
                         <th scope="col">Harga Total</th>
-                        <th scope="col">Perangkat</th>
+                        <th scope="col">Jenis PlayStation</th>
                         <th scope="col">F&B</th>
                         <th scope="col">Status</th>
                         <th scope="col">Action</th>
@@ -50,8 +50,8 @@
                             <td>{{ $package->nama_paket }}</td>
                             <td>Rp {{ number_format($package->harga_total, 0, ',', '.') }}</td>
                             <td>
-                                @foreach ($package->devices as $device)
-                                    <span class="badge badge-info">{{ $device->playstation->nama }} - {{ $device->pivot->lama_main }} menit</span><br>
+                                @foreach ($package->playstations as $playstation)
+                                    <span class="badge badge-info">{{ $playstation->nama }} - {{ $playstation->pivot->lama_main }} menit</span><br>
                                 @endforeach
                             </td>
                             <td>

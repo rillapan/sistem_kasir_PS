@@ -35,6 +35,12 @@
                                     Lost Time
                                 </label>
                             </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="tipe_transaksi" id="custom_package" value="custom_package" onchange="toggleFields()">
+                                <label class="form-check-label" for="custom_package">
+                                    Custom Paket
+                                </label>
+                            </div>
                         </div>
                     </div>
 
@@ -66,7 +72,7 @@
                     </div>
 
                     <!-- Row 2: Device -->
-                    <div class="row mb-2">
+                    <div class="row mb-2" id="device-row">
                         <div class="col-md-12" id="device">
                             <label for="device" class="form-label small">Nama Perangkat</label>
                             <select class="form-control" id="device_id" name="device_id" onchange="showPrice()" {{ $noDevices ? 'disabled' : '' }}>
@@ -87,6 +93,61 @@
                                     @endforeach
                                 @endif
                             </select>
+                        </div>
+                    </div>
+
+                    <!-- Row 2.5: Custom Package -->
+                    <div class="row mb-2" id="custom-package-row" style="display: none;">
+                        <div class="col-md-12">
+                            <label for="custom_package_id" class="form-label small">Pilih Custom Paket</label>
+                            <select class="form-control" id="custom_package_id" name="custom_package_id" onchange="loadCustomPackageDetails()">
+                                <option value="" selected disabled hidden>Pilih custom paket</option>
+                                @foreach ($customPackages as $package)
+                                    <option value="{{ $package->id }}" data-details="{{ json_encode($package) }}">{{ $package->nama_paket }} - Rp {{ number_format($package->harga_total, 0, ',', '.') }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Row 2.5.5: Device Selection for Custom Package -->
+                    <div class="row mb-2" id="custom-package-device-row" style="display: none;">
+                        <div class="col-md-12">
+                            <label for="custom_package_device_id" class="form-label small">Pilih Perangkat</label>
+                            <select class="form-control" id="custom_package_device_id">
+                                <option value="" selected disabled hidden>Pilih perangkat yang tersedia</option>
+                            </select>
+                            <small class="text-muted">Hanya perangkat yang sesuai dengan jenis PlayStation dalam paket yang akan ditampilkan</small>
+                        </div>
+                    </div>
+
+                    <!-- Row 2.6: Selected Custom Package Details -->
+                    <div class="row mb-2" id="custom-package-details" style="display: none;">
+                        <div class="col-md-12">
+                            <div class="card border-info">
+                                <div class="card-header bg-info text-white">
+                                    <h6 class="m-0 font-weight-bold">Detail Paket Terpilih</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <strong>Nama Paket:</strong> <span id="selected-package-name">-</span>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <strong>Harga Total:</strong> <span id="selected-package-price">-</span>
+                                        </div>
+                                    </div>
+                                    <div class="row mt-2">
+                                        <div class="col-md-6">
+                                            <strong>Jenis PlayStation:</strong>
+                                            <ul id="selected-package-devices" class="list-unstyled mb-0"></ul>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <strong>F&B:</strong>
+                                            <ul id="selected-package-fnb" class="list-unstyled mb-0"></ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -198,6 +259,7 @@
         const d = new Date();
         let fnbIndex = 0;
         const fnbs = @json($fnbs);
+        const devices = @json($devices);
 
         member.style.display = "none";
         nama.style.display = "none";
@@ -214,19 +276,45 @@
 
         function toggleFields() {
             const isPrepaid = document.getElementById('prepaid').checked;
+            const isPostpaid = document.getElementById('postpaid').checked;
+            const isCustomPackage = document.getElementById('custom_package').checked;
+            const deviceRow = document.getElementById('device-row');
+            const customPackageRow = document.getElementById('custom-package-row');
             const jamMainRow = document.querySelector('.row.mb-2:has(#jam_main)');
             const waktuSelesaiRow = document.querySelector('.row.mb-2:has(#waktu_Selesai)');
             const totalPsRow = document.querySelector('.row.mb-2:has(#total_ps)');
             const jamMainInput = document.getElementById('jam_main');
             const bayarBtn = document.getElementById('bayarBtn');
-            
+            const hargaLabel = document.querySelector('label[for="harga"]');
+
+            // Show/hide device and custom package rows
+            if (deviceRow) deviceRow.style.display = 'block';
+            if (customPackageRow) customPackageRow.style.display = isCustomPackage ? 'block' : 'none';
+            // Hide custom package device row since we use main device select
+            document.getElementById('custom-package-device-row').style.display = 'none';
+
+            // Clear device selection and related fields when switching to custom package
+            if (isCustomPackage) {
+                document.getElementById('device_id').value = '';
+                document.getElementById('jam_main').value = '';
+                document.getElementById('waktu_Selesai').value = '';
+                document.getElementById('total_ps').value = '';
+                // Load devices compatible with any custom package
+                loadAllCustomPackageDevices();
+            }
+
+            // Update harga label
+            if (hargaLabel) {
+                hargaLabel.textContent = isCustomPackage ? 'Total Paket' : 'Harga per Jam';
+            }
+
             // Show/hide Bayar button based on transaction type
             if (bayarBtn) {
-                bayarBtn.style.display = isPrepaid ? 'block' : 'none';
+                bayarBtn.style.display = (isPrepaid || isCustomPackage) ? 'block' : 'none';
                 // Adjust the width of Simpan button when Bayar is hidden
                 const simpanBtn = document.querySelector('button[value="simpan"]');
                 if (simpanBtn) {
-                    simpanBtn.style.flex = isPrepaid ? '1' : '0 0 100%';
+                    simpanBtn.style.flex = (isPrepaid || isCustomPackage) ? '1' : '0 0 100%';
                 }
             }
 
@@ -236,7 +324,15 @@
                 if (totalPsRow) totalPsRow.style.display = 'flex';
                 jamMainInput.setAttribute('required', 'required');
                 updateGrandTotal();
+            } else if (isCustomPackage) {
+                if (jamMainRow) jamMainRow.style.display = 'none';
+                if (waktuSelesaiRow) waktuSelesaiRow.style.display = 'none';
+                if (totalPsRow) totalPsRow.style.display = 'none';
+                jamMainInput.removeAttribute('required');
+                // For custom package, total is set from package
+                updateGrandTotal();
             } else {
+                // Postpaid
                 if (jamMainRow) jamMainRow.style.display = 'none';
                 if (waktuSelesaiRow) waktuSelesaiRow.style.display = 'none';
                 if (totalPsRow) totalPsRow.style.display = 'none';
@@ -421,6 +517,206 @@
         }
 
 
+
+        function loadCustomPackageDetails() {
+            const customPackageSelect = document.getElementById('custom_package_id');
+            const selectedOption = customPackageSelect.options[customPackageSelect.selectedIndex];
+            const packageData = selectedOption.getAttribute('data-details');
+
+            if (!packageData) {
+                document.getElementById('harga').value = 0;
+                document.getElementById('total').value = 0;
+                document.getElementById('custom-package-details').style.display = 'none';
+                return;
+            }
+
+            const package = JSON.parse(packageData);
+
+            // Display package details
+            document.getElementById('selected-package-name').textContent = package.nama_paket;
+            document.getElementById('selected-package-price').textContent = 'Rp ' + new Intl.NumberFormat('id-ID').format(package.harga_total);
+
+            // Display playstations
+            const devicesList = document.getElementById('selected-package-devices');
+            devicesList.innerHTML = '';
+            if (package.playstations && package.playstations.length > 0) {
+                package.playstations.forEach(playstation => {
+                    const li = document.createElement('li');
+                    li.textContent = playstation.nama + ' - ' + playstation.pivot.lama_main + ' jam';
+                    devicesList.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.textContent = 'Tidak ada perangkat';
+                devicesList.appendChild(li);
+            }
+
+            // Display F&B
+            const fnbList = document.getElementById('selected-package-fnb');
+            fnbList.innerHTML = '';
+            if (package.fnbs && package.fnbs.length > 0) {
+                package.fnbs.forEach(fnb => {
+                    const li = document.createElement('li');
+                    li.textContent = fnb.nama + ' (Qty: ' + fnb.pivot.quantity + ') - Rp ' + new Intl.NumberFormat('id-ID').format(fnb.harga_jual);
+                    fnbList.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.textContent = 'Tidak ada F&B';
+                fnbList.appendChild(li);
+            }
+
+            // Show the details section
+            document.getElementById('custom-package-details').style.display = 'block';
+
+            // Set the package total as harga (since it's the total for the package)
+            document.getElementById('harga').value = package.harga_total;
+            // Set the total price from the package
+            document.getElementById('total').value = package.harga_total;
+
+            // Clear existing FnB items
+            const fnbContainer = document.getElementById('fnb-container');
+            fnbContainer.innerHTML = '';
+
+            // Add FnB items from the package (read-only)
+            if (package.fnbs && package.fnbs.length > 0) {
+                package.fnbs.forEach((fnb, index) => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'fnb-item border-bottom p-3 package-fnb-item';
+                    itemDiv.innerHTML = `
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-4">
+                                <label class="form-label small mb-1">Barang</label>
+                                <input type="text" class="form-control form-control-sm" value="${fnb.nama}" readonly>
+                                <input type="hidden" name="fnb_ids[]" value="${fnb.id}">
+                                <small class="text-info">
+                                    <i class="fas fa-info-circle"></i> Item dari paket (tidak dapat diubah)
+                                </small>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small mb-1">Qty</label>
+                                <input type="number" class="form-control form-control-sm" name="fnbs_qty[]" value="${fnb.pivot.quantity}" readonly>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small mb-1">Harga Jual</label>
+                                <input type="number" class="form-control form-control-sm" name="fnbs_harga[]" value="${fnb.harga_jual}" readonly>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small mb-1">Total</label>
+                                <input type="number" class="form-control form-control-sm" value="${fnb.pivot.quantity * fnb.harga_jual}" readonly>
+                            </div>
+                            <div class="col-md-1 text-end">
+                                <span class="badge bg-info">Paket</span>
+                            </div>
+                        </div>
+                    `;
+                    fnbContainer.appendChild(itemDiv);
+                });
+            }
+
+            // Update FNB total
+            updateFnbTotal();
+
+            // Load devices for this custom package
+            loadCustomPackageDevices(package);
+            // Also update the main device select to show only devices for this package
+            loadPackageSpecificDevices(package);
+        }
+
+        function loadAllCustomPackageDevices() {
+            const deviceSelect = document.getElementById('device_id');
+
+            // Clear existing options
+            deviceSelect.innerHTML = '<option value="" selected disabled hidden>Pilih nama perangkat</option>';
+
+            // Get all unique playstation IDs from all custom packages
+            const allPlaystationIds = new Set();
+            @json($customPackages).forEach(package => {
+                if (package.playstations) {
+                    package.playstations.forEach(ps => allPlaystationIds.add(ps.id));
+                }
+            });
+
+            // Filter devices based on playstation types used in custom packages and availability
+            const availableDevices = devices.filter(device =>
+                allPlaystationIds.has(device.playstation_id) && device.status === 'Tersedia'
+            );
+
+            // Populate device options
+            availableDevices.forEach(device => {
+                const option = document.createElement('option');
+                const playstationName = device.playstation ? device.playstation.nama : 'Tidak Diketahui';
+                option.value = device.id;
+                option.textContent = `${device.nama} - ${playstationName}`;
+                deviceSelect.appendChild(option);
+            });
+        }
+
+        function loadPackageSpecificDevices(package) {
+            const deviceSelect = document.getElementById('device_id');
+
+            // Clear existing options
+            deviceSelect.innerHTML = '<option value="" selected disabled hidden>Pilih nama perangkat</option>';
+
+            if (!package.playstations || package.playstations.length === 0) {
+                return;
+            }
+
+            // Get playstation IDs from the selected package
+            const playstationIds = package.playstations.map(ps => ps.id);
+
+            // Filter devices based on playstation types from this package and availability
+            const availableDevices = devices.filter(device =>
+                playstationIds.includes(device.playstation_id) && device.status === 'Tersedia'
+            );
+
+            // Populate device options
+            availableDevices.forEach(device => {
+                const option = document.createElement('option');
+                const playstationName = device.playstation ? device.playstation.nama : 'Tidak Diketahui';
+                option.value = device.id;
+                option.textContent = `${device.nama} - ${playstationName}`;
+                deviceSelect.appendChild(option);
+            });
+        }
+
+        function loadCustomPackageDevices(package) {
+            const deviceSelect = document.getElementById('custom_package_device_id');
+            const deviceRow = document.getElementById('custom-package-device-row');
+
+            // Clear existing options
+            deviceSelect.innerHTML = '<option value="" selected disabled hidden>Pilih perangkat yang tersedia</option>';
+
+            if (!package.playstations || package.playstations.length === 0) {
+                deviceRow.style.display = 'none';
+                return;
+            }
+
+            // Get playstation IDs from package
+            const playstationIds = package.playstations.map(ps => ps.id);
+
+            // Filter devices based on playstation types and availability
+            const availableDevices = devices.filter(device =>
+                playstationIds.includes(device.playstation_id) && device.status === 'Tersedia'
+            );
+
+            if (availableDevices.length === 0) {
+                deviceRow.style.display = 'none';
+                return;
+            }
+
+            // Populate device options
+            availableDevices.forEach(device => {
+                const option = document.createElement('option');
+                const playstationName = device.playstation ? device.playstation.nama : 'Tidak Diketahui';
+                option.value = device.id;
+                option.textContent = `${device.nama} - ${playstationName}`;
+                deviceSelect.appendChild(option);
+            });
+
+            // Show device selection row
+            deviceRow.style.display = 'block';
+        }
 
         function showTime() {
             const waktu_mulai = document.getElementById('waktu_mulai').value;

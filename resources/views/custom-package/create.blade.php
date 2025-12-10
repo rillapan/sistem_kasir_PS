@@ -44,26 +44,26 @@
                 </div>
 
                 <hr>
-                <h5>Perangkat</h5>
+                <h5>Jenis PlayStation</h5>
                 <div id="devicesContainer">
                     <div class="device-item row mb-2">
                         <div class="col-md-5">
-                            <select class="form-control device-select" name="devices[0][id]" required>
-                                <option value="">Pilih Perangkat</option>
-                                @foreach ($devices as $device)
-                                    <option value="{{ $device->id }}">{{ $device->playstation->nama }} - {{ $device->nama }}</option>
+                            <select class="form-control device-select" name="playstations[0][id]" required>
+                                <option value="">Pilih Jenis PlayStation</option>
+                                @foreach ($playstations as $playstation)
+                                    <option value="{{ $playstation->id }}">{{ $playstation->nama }}</option>
                                 @endforeach
                             </select>
                         </div>
                         <div class="col-md-5">
-                            <input type="number" class="form-control" name="devices[0][lama_main]" placeholder="Lama Main (menit)" min="1" required>
+                            <input type="number" class="form-control" name="playstations[0][lama_main]" placeholder="Lama Main (menit)" min="1" required>
                         </div>
                         <div class="col-md-2">
                             <button type="button" class="btn btn-danger btn-sm remove-device" style="display: none;">Hapus</button>
                         </div>
                     </div>
                 </div>
-                <button type="button" class="btn btn-secondary btn-sm mb-3" id="addDevice">Tambah Perangkat</button>
+                <button type="button" class="btn btn-secondary btn-sm mb-3" id="addDevice">Tambah Jenis PlayStation</button>
 
                 <hr>
                 <h5>F&B</h5>
@@ -106,15 +106,15 @@
             deviceItem.className = 'device-item row mb-2';
             deviceItem.innerHTML = `
                 <div class="col-md-5">
-                    <select class="form-control device-select" name="devices[${deviceIndex}][id]" required>
-                        <option value="">Pilih Perangkat</option>
-                        @foreach ($devices as $device)
-                            <option value="{{ $device->id }}">{{ $device->playstation->nama }} - {{ $device->nama }}</option>
+                    <select class="form-control device-select" name="playstations[${deviceIndex}][id]" required>
+                        <option value="">Pilih Jenis PlayStation</option>
+                        @foreach ($playstations as $playstation)
+                            <option value="{{ $playstation->id }}">{{ $playstation->nama }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="col-md-5">
-                    <input type="number" class="form-control" name="devices[${deviceIndex}][lama_main]" placeholder="Lama Main (menit)" min="1" required>
+                    <input type="number" class="form-control" name="playstations[${deviceIndex}][lama_main]" placeholder="Lama Main (menit)" min="1" required>
                 </div>
                 <div class="col-md-2">
                     <button type="button" class="btn btn-danger btn-sm remove-device">Hapus</button>

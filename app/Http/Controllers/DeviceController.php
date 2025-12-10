@@ -57,16 +57,16 @@ class DeviceController extends Controller
                         // Get the transaction start time and date
                         $startTime = $transaction->waktu_mulai;
                         $transactionDate = $transaction->created_at->format('Y-m-d');
-                        
+
                         // Create proper datetime objects for start and end times
                         $startDateTime = Carbon::parse($transactionDate . ' ' . $startTime);
                         $endDateTime = Carbon::parse($transactionDate . ' ' . $endTime);
-                        
+
                         // If end time is earlier than start time, it means it's the next day
                         if ($endDateTime < $startDateTime) {
                             $endDateTime->addDay();
                         }
-                        
+
                         // Compare with current time
                         if ($endDateTime > $now) {
                             $newStatus = 'Digunakan';
@@ -79,6 +79,31 @@ class DeviceController extends Controller
                 } elseif ($transaction->tipe_transaksi === 'postpaid') {
                     if ($transaction->status_transaksi === 'berjalan') {
                         $newStatus = 'Digunakan';
+                    } else {
+                        $newStatus = 'Tersedia';
+                    }
+                } elseif ($transaction->tipe_transaksi === 'custom_package') {
+                    $endTime = $transaction->waktu_Selesai;
+                    if ($endTime) {
+                        // Get the transaction start time and date
+                        $startTime = $transaction->waktu_mulai;
+                        $transactionDate = $transaction->created_at->format('Y-m-d');
+
+                        // Create proper datetime objects for start and end times
+                        $startDateTime = Carbon::parse($transactionDate . ' ' . $startTime);
+                        $endDateTime = Carbon::parse($transactionDate . ' ' . $endTime);
+
+                        // If end time is earlier than start time, it means it's the next day
+                        if ($endDateTime < $startDateTime) {
+                            $endDateTime->addDay();
+                        }
+
+                        // Compare with current time
+                        if ($endDateTime > $now) {
+                            $newStatus = 'Digunakan';
+                        } else {
+                            $newStatus = 'Tersedia';
+                        }
                     } else {
                         $newStatus = 'Tersedia';
                     }
