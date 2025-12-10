@@ -117,13 +117,18 @@ class DeviceController extends Controller
 
         $devices = Device::select('devices.*')
             ->leftJoinSub($latestTransactionsSub, 'latest_transactions', 'devices.id', '=', 'latest_transactions.device_id')
+            ->orderByRaw('CASE WHEN devices.status = "Digunakan" THEN 0 ELSE 1 END')
             ->orderBy('latest_transactions.latest_transaction_at', 'desc')
             ->with('playstation')
-            ->paginate(9);
+            ->paginate(12);
 
         // Count devices by status
         $countAvailable = Device::where('status', 'Tersedia')->count();
         $countInUse = Device::where('status', 'Digunakan')->count();
+
+        // Get device names by status
+        $availableDevices = Device::where('status', 'Tersedia')->pluck('nama')->toArray();
+        $inUseDevices = Device::where('status', 'Digunakan')->pluck('nama')->toArray();
 
         // Collect end times and transaction info for in-use devices
         $timers = [];
@@ -220,7 +225,9 @@ class DeviceController extends Controller
             'timers' => $timers,
             'customers' => $customers,
             'countAvailable' => $countAvailable,
-            'countInUse' => $countInUse
+            'countInUse' => $countInUse,
+            'availableDevices' => $availableDevices,
+            'inUseDevices' => $inUseDevices
         ]);
     }
 

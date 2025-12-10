@@ -13,34 +13,49 @@
             {{ session('gagal') }}
         </div>
     @endif
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">{{ $title }}</h1>
-    </div>
 
     <div class="row mb-4">
         <div class="col-lg-6 mb-3">
             <div class="card border-left-primary shadow h-100 py-3">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Data Perangkat Tersedia</div>
-                        <div class="h4 mb-0 font-weight-bold text-gray-800">{{ $countAvailable }}</div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="text-xl font-weight-bold text-primary text-uppercase">Data Perangkat Tersedia</div>
+                        <div class="h3 mb-0 font-weight-bold text-gray-800">{{ $countAvailable }}</div>
                     </div>
-                    <div>
-                        <i class="fas fa-tv fa-3x text-gray-300"></i>
-                    </div>
+                    @if(!empty($availableDevices))
+                        <div class="mt-2">
+                            <small class="text-muted font-weight-bold">Perangkat:</small>
+                            <div class="mt-1">
+                                @foreach($availableDevices as $device)
+                                    <span class="badge badge-success mr-1 mb-1">{{ $device }}</span>
+                                @endforeach
+                            </div>
+                        </div>
+                    @else
+                        <small class="text-muted">Tidak ada perangkat tersedia</small>
+                    @endif
                 </div>
             </div>
         </div>
         <div class="col-lg-6 mb-3">
             <div class="card border-left-warning shadow h-100 py-3">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Data Perangkat Digunakan</div>
-                        <div class="h4 mb-0 font-weight-bold text-gray-800">{{ $countInUse }}</div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="text-xsl font-weight-bold text-warning text-uppercase">Data Perangkat Digunakan</div>
+                        <div class="h3 mb-0 font-weight-bold text-gray-800">{{ $countInUse }}</div>
                     </div>
-                    <div>
-                        <i class="fas fa-tv fa-3x text-gray-300"></i>
-                    </div>
+                    @if(!empty($inUseDevices))
+                        <div class="mt-2">
+                            <small class="text-muted font-weight-bold">Perangkat:</small>
+                            <div class="mt-1">
+                                @foreach($inUseDevices as $device)
+                                    <span class="badge badge-warning mr-1 mb-1">{{ $device }}</span>
+                                @endforeach
+                            </div>
+                        </div>
+                    @else
+                        <small class="text-muted">Tidak ada perangkat digunakan</small>
+                    @endif
                 </div>
             </div>
         </div>
@@ -67,12 +82,28 @@
                 @foreach ($devices as $device)
                     <div class="col-lg-4 col-md-6 mb-4">
                         <div class="card shadow h-100">
-                            <div class="card-header py-3">
+                            <div class="card-header py-3 d-flex justify-content-between align-items-center">
                                 <h6 class="m-0 font-weight-bold text-primary">{{ $device->nama }}</h6>
+                                @if ($device->status === 'Digunakan' && isset($customers[$device->id]))
+                                    <span class="badge 
+                                        @if($customers[$device->id]['tipe_transaksi'] === 'prepaid') badge-primary
+                                        @elseif($customers[$device->id]['tipe_transaksi'] === 'custom_package') badge-warning
+                                        @else badge-secondary
+                                        @endif">
+                                        @if($customers[$device->id]['tipe_transaksi'] === 'prepaid')
+                                            Paket
+                                        @elseif($customers[$device->id]['tipe_transaksi'] === 'custom_package')
+                                            Custom Paket
+                                        @else
+                                            Lost Time
+                                        @endif
+                                    </span>
+                                @endif
                             </div>
                             <div class="card-body">
                                 <div class="mb-2">
                                     <strong>Jenis Playstation:</strong> {{ $device->playstation->nama ?? 'Tidak Diketahui' }}
+
                                 </div>
                                 <div class="mb-2" id="status-{{ $device->id }}">
                                     <strong>Status:</strong>
