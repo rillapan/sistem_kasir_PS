@@ -129,9 +129,21 @@
                                     <td><strong>Biaya FnB:</strong></td>
                                     <td>Rp {{ number_format($transaction->getFnbTotalAttribute(), 0, ',', '.') }}</td>
                                 </tr>
+                                @if($transaction->diskon && $transaction->diskon > 0)
+                                    <tr>
+                                        <td class="text-info"><strong>Harga Sebelum Diskon:</strong></td>
+                                        <td class="text-info"><strong>Rp {{ number_format($transaction->total, 0, ',', '.') }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <!-- harga sebelum diskon -->
+                                        
+                                        <td class="text-warning"><strong>Diskon:</strong></td>
+                                        <td class="text-warning"><strong>{{ $transaction->diskon }}% (-Rp {{ number_format($transaction->total * $transaction->diskon / 100, 0, ',', '.') }})</strong></td>
+                                    </tr>
+                                @endif
                                 <tr>
                                     <td><strong><h5>Total Biaya:</h5></strong></td>
-                                    <td><h5>Rp {{ number_format($transaction->total, 0, ',', '.') }}</h5></td>
+                                    <td><h5>Rp {{ number_format($transaction->diskon && $transaction->diskon > 0 ? $transaction->total - ($transaction->total * $transaction->diskon / 100) : $transaction->total, 0, ',', '.') }}</h5></td>
                                 </tr>
                             </table>
                         </div>
@@ -183,7 +195,10 @@
                                 <i class="fas fa-credit-card"></i> BAYAR SEKARANG
                             </a>
                             <p class="mt-2 text-muted">
-                                Total yang harus dibayar: <strong>Rp {{ number_format($transaction->total, 0, ',', '.') }}</strong>
+                                Total yang harus dibayar: <strong>Rp {{ number_format($transaction->diskon && $transaction->diskon > 0 ? $transaction->total - ($transaction->total * $transaction->diskon / 100) : $transaction->total, 0, ',', '.') }}</strong>
+                                @if($transaction->diskon && $transaction->diskon > 0)
+                                    <br><small class="text-info">Setelah diskon {{ $transaction->diskon }}% (hemat Rp {{ number_format($transaction->total * $transaction->diskon / 100, 0, ',', '.') }})</small>
+                                @endif
                             </p>
                         </div>
                     @endif

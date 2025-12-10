@@ -14,11 +14,6 @@
         </div>
     @endif
 
-    
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">{{ $title }}</h1>
-    </div>
-
     <!-- Summary Cards Section -->
     <div class="row mb-4">
         <!-- Transaction Types Row -->
@@ -143,6 +138,8 @@
                         <th scope="col">Waktu Selesai</th>
                         <th scope="col">FnB</th>
                         <th scope="col">Total</th>
+                        <th scope="col">Diskon</th>
+                        <th scope="col">Total Setelah Diskon</th>
                         <th scope="col">Tanggal</th>
                         <th scope="col">Status Transaksi</th>
                         <th scope="col">Status Pembayaran</th>
@@ -198,6 +195,20 @@
                                 @endif
                             </td>
                             <td>{{ 'Rp ' . number_format($transaksi->total, 0, ',', '.') }}</td>
+                            <td>
+                                @if($transaksi->diskon && $transaksi->diskon > 0)
+                                    {{ $transaksi->diskon }}%
+                                @else
+                                    -
+                                @endif
+                            </td>
+                            <td>
+                                @if($transaksi->diskon && $transaksi->diskon > 0)
+                                    {{ 'Rp ' . number_format($transaksi->total - ($transaksi->total * $transaksi->diskon / 100), 0, ',', '.') }}
+                                @else
+                                    {{ 'Rp ' . number_format($transaksi->total, 0, ',', '.') }}
+                                @endif
+                            </td>
                             <td>{{ $transaksi->created_at }}</td>
                             <td>{{ ucfirst($transaksi->status_transaksi) }}</td>
                             <td>

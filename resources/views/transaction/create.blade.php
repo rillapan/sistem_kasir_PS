@@ -301,10 +301,11 @@
 
             // Handle device selection based on transaction type
             if (isCustomPackage) {
-                // Don't disable device selection - let it be enabled after package selection
-                // Only clear the value initially
-                deviceSelect.value = '';
+                // Disable device selection initially for custom package
+                deviceSelect.disabled = true;
                 deviceHelpText.textContent = 'Pilih paket terlebih dahulu, lalu pilih perangkat';
+                // Clear device selection
+                deviceSelect.value = '';
                 document.getElementById('jam_main').value = '';
                 document.getElementById('waktu_Selesai').value = '';
                 document.getElementById('total_ps').value = '';

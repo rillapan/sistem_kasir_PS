@@ -29,7 +29,8 @@ class Transaction extends Model
         'payment_status',
         'payment_method',
         'tipe_transaksi',
-        'custom_package_id'
+        'custom_package_id',
+        'diskon'
     ];
 
     public function device()

@@ -169,9 +169,13 @@
                             <td><strong>Biaya FnB:</strong></td>
                             <td>Rp {{ number_format($transaction->getFnbTotalAttribute(), 0, ',', '.') }}</td>
                         </tr>
+                        <tr id="discount-row" style="display: none;">
+                            <td class="text-warning"><strong>Diskon:</strong></td>
+                            <td class="text-warning"><strong>-Rp <span id="discount-display">0</span></strong></td>
+                        </tr>
                         <tr class="bg-success">
                             <td class="text-white font-weight-bold"><h5>Total Biaya:</h5></td>
-                            <td class="text-white font-weight-bold"><h5>Rp {{ number_format($transaction->total, 0, ',', '.') }}</h5></td>
+                            <td class="text-white font-weight-bold"><h5>Rp <span id="total-display">{{ number_format($transaction->total, 0, ',', '.') }}</span></h5></td>
                         </tr>
 
                     </table>
@@ -252,6 +256,31 @@
                 </div>
 
                 <div class="form-group mb-3">
+                    <label for="discount">Diskon (Opsional)</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control @error('discount') is-invalid @enderror" id="discount" name="discount" min="0" max="100" value="0" step="0.1" oninput="updateTotalAfterDiscount()">
+                        <div class="input-group-append">
+                            <span class="input-group-text">%</span>
+                        </div>
+                    </div>
+                    <small class="form-text text-muted">Masukkan persentase diskon (0-100%)</small>
+                    @error('discount')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div class="form-group mb-3">
+                    <label for="final_total">Total Setelah Diskon</label>
+                    <div class="input-group">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text">Rp</span>
+                        </div>
+                        <input type="number" class="form-control bg-light" id="final_total" readonly>
+                    </div>
+                    <small class="form-text text-info">Total yang harus dibayar setelah diskon</small>
+                </div>
+
+                <div class="form-group mb-3">
                     <label for="amount_paid">Jumlah Uang Dibayar</label>
                     <input type="number" class="form-control @error('amount_paid') is-invalid @enderror" id="amount_paid" name="amount_paid" required min="{{ $transaction->total }}" oninput="calculateChange()">
                     @error('amount_paid')
@@ -264,20 +293,78 @@
                     <input type="number" class="form-control" id="change" readonly>
                 </div>
 
-                <button type="submit" class="btn btn-primary">Bayar</button>
-                <a href="{{ route('transaction.index') }}" class="btn btn-secondary">Kembali ke Transaksi</a>
-                <a href="{{ route('transaction.index') }}" class="btn btn-danger">Batal</a>
+                <div class="d-flex justify-content-between align-items-center mt-4">
+                    <div>
+                        <a href="{{ route('transaction.index') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Kembali ke Transaksi
+                        </a>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a href="{{ route('transaction.index') }}" class="btn btn-outline-danger" onclick="return confirm('Apakah Anda yakin ingin membatalkan pembayaran?')">
+                            <i class="fas fa-times"></i> Batal
+                        </a>
+                        <button type="submit" class="btn btn-success btn-lg px-4">
+                            <i class="fas fa-credit-card"></i> Proses Pembayaran
+                        </button>
+                    </div>
+                </div>
             </form>
         </div>
     </div>
 </div>
 
 <script>
-    const total = {{ $transaction->total }};
+    const originalTotal = {{ $transaction->total }};
+    let finalTotal = originalTotal;
+    
+    function updateTotalAfterDiscount() {
+        const discountPercentage = parseFloat(document.getElementById('discount').value) || 0;
+        const discountAmount = (originalTotal * discountPercentage) / 100;
+        finalTotal = originalTotal - discountAmount;
+        
+        // Ensure final total is not negative
+        if (finalTotal < 0) {
+            finalTotal = 0;
+        }
+        
+        // Update final total display only if discount > 0
+        const finalTotalInput = document.getElementById('final_total');
+        if (discountPercentage > 0) {
+            finalTotalInput.value = finalTotal;
+        } else {
+            finalTotalInput.value = '';
+        }
+        
+        // Update discount row in transaction details
+        const discountRow = document.getElementById('discount-row');
+        const discountDisplay = document.getElementById('discount-display');
+        const totalDisplay = document.getElementById('total-display');
+        
+        if (discountPercentage > 0) {
+            discountRow.style.display = 'table-row';
+            discountDisplay.textContent = new Intl.NumberFormat('id-ID').format(discountAmount) + ' (' + discountPercentage + '%)';
+            totalDisplay.textContent = new Intl.NumberFormat('id-ID').format(finalTotal);
+        } else {
+            discountRow.style.display = 'none';
+            totalDisplay.textContent = new Intl.NumberFormat('id-ID').format(originalTotal);
+        }
+        
+        // Update amount paid minimum
+        document.getElementById('amount_paid').min = finalTotal;
+        
+        // If current amount paid is less than new minimum, clear it for manual input
+        const currentAmountPaid = parseFloat(document.getElementById('amount_paid').value) || 0;
+        if (currentAmountPaid < finalTotal) {
+            document.getElementById('amount_paid').value = '';
+        }
+        
+        // Recalculate change
+        calculateChange();
+    }
     
     function calculateChange() {
         const amountPaid = parseFloat(document.getElementById('amount_paid').value) || 0;
-        const change = amountPaid - total;
+        const change = amountPaid - finalTotal;
         document.getElementById('change').value = change > 0 ? change : 0;
     }
     
@@ -287,6 +374,9 @@
         const amountPaidInput = document.getElementById('amount_paid');
         const changeGroup = document.getElementById('change-group');
         
+        // Initialize final total
+        updateTotalAfterDiscount();
+        
         paymentMethods.forEach(method => {
             method.addEventListener('change', function() {
                 if (this.value === 'tunai') {
@@ -295,9 +385,10 @@
                     amountPaidInput.value = '';
                     changeGroup.style.display = 'block';
                 } else {
-                    // E-wallet or Bank Transfer - set to total, no change
+                    // E-wallet or Bank Transfer - set to final total, no change
                     amountPaidInput.readOnly = true;
-                    amountPaidInput.value = total;
+                    const discountPercentage = parseFloat(document.getElementById('discount').value) || 0;
+                    amountPaidInput.value = discountPercentage > 0 ? finalTotal : originalTotal;
                     document.getElementById('change').value = 0;
                     changeGroup.style.display = 'block';
                 }

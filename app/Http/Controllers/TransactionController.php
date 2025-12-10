@@ -34,23 +34,40 @@ class TransactionController extends Controller
     {
         $transaction = Transaction::findOrFail($id);
 
+        // Calculate final total after discount
+        $discount = $request->input('discount', 0);
+        
+        // Only save discount if it's greater than 0
+        $discountToSave = $discount > 0 ? $discount : null;
+        $finalTotal = $transaction->total - ($transaction->total * $discount / 100);
+        
         $request->validate([
             'payment_method' => 'required|in:tunai,e-wallet,transfer_bank',
-            'amount_paid' => 'required|numeric|min:' . $transaction->total,
+            'amount_paid' => 'required|numeric|min:' . $finalTotal,
+            'discount' => 'nullable|numeric|min:0|max:100',
         ]);
 
         $amountPaid = $request->input('amount_paid');
-        $change = $amountPaid - $transaction->total;
+        $change = $amountPaid - $finalTotal;
         $paymentMethod = $request->input('payment_method');
 
-        $transaction->update([
+        $updateData = [
             'payment_status' => 'paid',
             'payment_method' => $paymentMethod,
             'status_transaksi' => 'selesai',
-        ]);
+        ];
+
+        // Only add diskon to update data if discount > 0
+        if ($discount > 0) {
+            $updateData['diskon'] = $discount;
+        }
+
+        $transaction->update($updateData);
 
         // Update device status to available
-        $transaction->device->update(['status' => 'Tersedia']);
+        if ($transaction->device) {
+            $transaction->device->update(['status' => 'Tersedia']);
+        }
 
         return redirect('transaction')->with('success', 'Pembayaran berhasil. Kembalian: Rp ' . number_format($change, 0, ',', '.'));
     }
