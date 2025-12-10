@@ -21,7 +21,7 @@ class TransactionController extends Controller
 
     public function showPayment($id)
     {
-        $transaction = Transaction::with(['device.playstation', 'transactionFnbs.fnb', 'user'])->findOrFail($id);
+        $transaction = Transaction::with(['device.playstation', 'transactionFnbs.fnb', 'user', 'custom_package.playstations', 'custom_package.fnbs'])->findOrFail($id);
 
         return view('transaction.payment', [
             'title' => 'Pembayaran Transaksi',
@@ -81,6 +81,7 @@ class TransactionController extends Controller
         // Calculate counts for transaction types and payment statuses
         $postpaidCount = Transaction::where('tipe_transaksi', 'postpaid')->count();
         $prepaidCount = Transaction::where('tipe_transaksi', 'prepaid')->count();
+        $customPackageCount = Transaction::where('tipe_transaksi', 'custom_package')->count();
         $paidCount = Transaction::where('payment_status', 'paid')->count();
         $unpaidCount = Transaction::where('payment_status', 'unpaid')->count();
 
@@ -104,6 +105,7 @@ class TransactionController extends Controller
             'currentType' => $type,
             'postpaidCount' => $postpaidCount,
             'prepaidCount' => $prepaidCount,
+            'customPackageCount' => $customPackageCount,
             'paidCount' => $paidCount,
             'unpaidCount' => $unpaidCount,
             'paymentMethodCounts' => $paymentMethodCounts,
@@ -502,7 +504,10 @@ class TransactionController extends Controller
             return redirect()->route('transaction.index')->with('error', 'Hanya bisa menambahkan pesanan untuk transaksi yang belum dibayar.');
         }
 
-        $fnbs = Fnb::all();
+        $fnbs = Fnb::where(function($query) {
+            $query->where('stok', '>=', 1)
+                  ->orWhere('stok', -1);
+        })->get();
 
         // Calculate existing total (PS cost + existing FNB cost)
         $existingFnbTotal = $transaction->getFnbTotalAttribute();

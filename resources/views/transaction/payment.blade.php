@@ -19,7 +19,13 @@
                         </tr>
                         <tr>
                             <td><strong>Nama:</strong></td>
-                            <td>{{ $transaction->nama }}</td>
+                            <td>
+                                @if($transaction->tipe_transaksi === 'custom_package' && $transaction->custom_package)
+                                    {{ $transaction->custom_package->nama_paket }}
+                                @else
+                                    {{ $transaction->nama }}
+                                @endif
+                            </td>
                         </tr>
                         <tr>
                             <td><strong>No Telf :</strong></td>
@@ -27,13 +33,26 @@
                         </tr>
                         <tr>
                             <td><strong>Tipe Transaksi:</strong></td>
-                            <td>{{ $transaction->tipe_transaksi === 'prepaid' ? 'Paket' : 'Lost Time' }}</td>
+                            <td>
+                                @if($transaction->tipe_transaksi === 'prepaid')
+                                    Paket
+                                @elseif($transaction->tipe_transaksi === 'custom_package')
+                                    Custom Paket
+                                @else
+                                    Lost Time
+                                @endif
+                            </td>
                         </tr>
-                       
                         <tr>
                             <td><strong>Tanggal:</strong></td>
                             <td>{{ $transaction->created_at->format('d/m/Y') }}</td>
                         </tr>
+                        @if($transaction->tipe_transaksi === 'custom_package' && $transaction->custom_package)
+                            <tr>
+                                <td><strong>Nama Paket:</strong></td>
+                                <td>{{ $transaction->custom_package->nama_paket }}</td>
+                            </tr>
+                        @endif
                     </table>
                 </div>
                 <div class="col-md-6">
@@ -50,6 +69,46 @@
                     </table>
                 </div>
             </div>
+
+            @if($transaction->tipe_transaksi === 'custom_package' && $transaction->custom_package)
+                <hr>
+                <div class="row">
+                    <div class="col-12">
+                        <h6>Detail Custom Paket</h6>
+                        <div class="alert alert-info">
+                            <h6 class="alert-heading">{{ $transaction->custom_package->nama_paket }}</h6>
+                            <p class="mb-2">{{ $transaction->custom_package->deskripsi }}</p>
+                            <hr>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Playstation dalam Paket:</strong>
+                                    <ul class="mb-0">
+                                        @if($transaction->custom_package->playstations->isNotEmpty())
+                                            @foreach($transaction->custom_package->playstations as $playstation)
+                                                <li>{{ $playstation->nama }} - {{ $playstation->pivot->lama_main }} menit</li>
+                                            @endforeach
+                                        @else
+                                            <li>Tidak ada playstation</li>
+                                        @endif
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>F&B dalam Paket:</strong>
+                                    <ul class="mb-0">
+                                        @if($transaction->custom_package->fnbs->isNotEmpty())
+                                            @foreach($transaction->custom_package->fnbs as $fnb)
+                                                <li>{{ $fnb->nama }} (Qty: {{ $fnb->pivot->quantity }})</li>
+                                            @endforeach
+                                        @else
+                                            <li>Tidak ada F&B</li>
+                                        @endif
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             <hr>
 
@@ -85,13 +144,25 @@
                     <h6>Biaya</h6>
                     <table class="table table-borderless">
                         <tr>
-                            <td><strong>Harga per Jam:</strong></td>
+                            <td><strong>
+                                @if($transaction->tipe_transaksi === 'custom_package')
+                                    Harga Paket:
+                                @else
+                                    Harga per Jam:
+                                @endif
+                            </strong></td>
                             <td>Rp {{ number_format($transaction->harga, 0, ',', '.') }}</td>
                         </tr>
                         @if($transaction->jam_main)
                             <tr>
                                 <td><strong>Lama Main:</strong></td>
-                                <td>{{ $transaction->jam_main }}</td>
+                                <td>
+                                    @if($transaction->tipe_transaksi === 'custom_package')
+                                        {{ $transaction->jam_main }} menit
+                                    @else
+                                        {{ $transaction->jam_main }} jam
+                                    @endif
+                                </td>
                             </tr>
                         @endif
                         <tr>

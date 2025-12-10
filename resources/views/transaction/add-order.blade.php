@@ -26,7 +26,12 @@
                                                     <option value="">Pilih Makanan/Minuman</option>
                                                     @foreach($fnbs as $fnb)
                                                         <option value="{{ $fnb->id }}" data-price="{{ $fnb->harga_jual }}">
-                                                            {{ $fnb->nama }} - Rp {{ number_format($fnb->harga_jual, 0, ',', '.') }} (Stok: {{ $fnb->stok }})
+                                                            {{ $fnb->nama }} - Rp {{ number_format($fnb->harga_jual, 0, ',', '.') }}
+                                                            @if($fnb->stok == -1)
+                                                                <span class="badge badge-success">Unlimited</span>
+                                                            @else
+                                                                (Stok: {{ $fnb->stok }})
+                                                            @endif
                                                         </option>
                                                     @endforeach
                                                 </select>
@@ -71,6 +76,13 @@
                                 <a href="{{ route('transaction.show', $transaction->id_transaksi) }}" class="btn btn-secondary">
                                     <i class="fas fa-arrow-left"></i> Kembali
                                 </a>
+                            </div>
+                        </div>
+                        
+                        <input type="hidden" id="existing-total" value="{{ $existingTotal }}">
+                        <div class="row mt-3">
+                            <div class="col-md-12 text-end">
+                                <h5>Total Baru: <span id="grand-total">Rp {{ number_format($existingTotal, 0, ',', '.') }}</span></h5>
                             </div>
                         </div>
                     </form>

@@ -71,6 +71,20 @@
                         </div>
                     </div>
 
+                     <!-- Row 2.5: Custom Package -->
+                    <div class="row mb-2" id="custom-package-row" style="display: none;">
+                        <div class="col-md-12">
+                            <label for="custom_package_id" class="form-label small">Pilih Custom Paket</label>
+                            <select class="form-control" id="custom_package_id" name="custom_package_id" onchange="loadCustomPackageDetails()">
+                                <option value="" selected disabled hidden>Pilih custom paket</option>
+                                @foreach ($customPackages as $package)
+                                    <option value="{{ $package->id }}" data-details="{{ json_encode($package) }}">{{ $package->nama_paket }} - Rp {{ number_format($package->harga_total, 0, ',', '.') }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+
                     <!-- Row 2: Device -->
                     <div class="row mb-2" id="device-row">
                         <div class="col-md-12" id="device">
@@ -98,19 +112,7 @@
                         </div>
                     </div>
 
-                    <!-- Row 2.5: Custom Package -->
-                    <div class="row mb-2" id="custom-package-row" style="display: none;">
-                        <div class="col-md-12">
-                            <label for="custom_package_id" class="form-label small">Pilih Custom Paket</label>
-                            <select class="form-control" id="custom_package_id" name="custom_package_id" onchange="loadCustomPackageDetails()">
-                                <option value="" selected disabled hidden>Pilih custom paket</option>
-                                @foreach ($customPackages as $package)
-                                    <option value="{{ $package->id }}" data-details="{{ json_encode($package) }}">{{ $package->nama_paket }} - Rp {{ number_format($package->harga_total, 0, ',', '.') }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-
+                   
                     <!-- Row 2.5.5: Device Selection for Custom Package -->
                     <div class="row mb-2" id="custom-package-device-row" style="display: none;">
                         <div class="col-md-12">
@@ -299,10 +301,10 @@
 
             // Handle device selection based on transaction type
             if (isCustomPackage) {
-                // Disable device selection until package is chosen
-                deviceSelect.disabled = true;
+                // Don't disable device selection - let it be enabled after package selection
+                // Only clear the value initially
                 deviceSelect.value = '';
-                deviceHelpText.textContent = 'Pilih paket terlebih dahulu';
+                deviceHelpText.textContent = 'Pilih paket terlebih dahulu, lalu pilih perangkat';
                 document.getElementById('jam_main').value = '';
                 document.getElementById('waktu_Selesai').value = '';
                 document.getElementById('total_ps').value = '';
@@ -734,10 +736,6 @@
             const deviceSelect = document.getElementById('device_id');
             const deviceHelpText = document.getElementById('device-help-text');
             
-            // Enable device selection
-            deviceSelect.disabled = false;
-            deviceHelpText.textContent = 'Pilih perangkat yang sesuai dengan paket';
-            
             // Clear existing options
             deviceSelect.innerHTML = '<option value="" selected disabled hidden>Pilih perangkat yang tersedia</option>';
 
@@ -764,7 +762,8 @@
                 return;
             }
 
-            // Populate device options
+            // Enable device selection and populate options
+            deviceSelect.disabled = false;
             availableDevices.forEach(device => {
                 const option = document.createElement('option');
                 const playstationName = device.playstation ? device.playstation.nama : 'Tidak Diketahui';
@@ -797,3 +796,4 @@
         }
     </script>
 @endsection
+

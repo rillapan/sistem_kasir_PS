@@ -28,7 +28,8 @@ class Transaction extends Model
         'status_transaksi',
         'payment_status',
         'payment_method',
-        'tipe_transaksi'
+        'tipe_transaksi',
+        'custom_package_id'
     ];
 
     public function device()
@@ -44,6 +45,11 @@ class Transaction extends Model
     public function transactionFnbs()
     {
         return $this->hasMany(TransactionFnb::class, 'transaction_id', 'id_transaksi');
+    }
+
+    public function custom_package()
+    {
+        return $this->belongsTo(CustomPackage::class, 'custom_package_id');
     }
 
     public function getFnbTotalAttribute()
