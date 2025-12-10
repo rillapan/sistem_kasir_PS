@@ -87,8 +87,8 @@
                                 <div class="mb-2">
                                     <strong>Timer:</strong>
                                     @if ($device->status === 'Digunakan' && isset($customers[$device->id]))
-                                        @if ($customers[$device->id]['tipe_transaksi'] === 'prepaid' && isset($timers[$device->id]))
-                                            <span id="timer-{{ $device->id }}" data-type="prepaid">Memuat...</span>
+                                        @if (($customers[$device->id]['tipe_transaksi'] === 'prepaid' || $customers[$device->id]['tipe_transaksi'] === 'custom_package') && isset($timers[$device->id]))
+                                            <span id="timer-{{ $device->id }}" data-type="{{ $customers[$device->id]['tipe_transaksi'] }}">Memuat...</span>
                                         @elseif($customers[$device->id]['tipe_transaksi'] === 'postpaid' && $customers[$device->id]['status_transaksi'] === 'berjalan')
                                             <span id="timer-{{ $device->id }}" data-type="postpaid"
                                                 data-start-time="{{ $customers[$device->id]['waktu_mulai'] }}"
@@ -253,15 +253,15 @@
 
         // Initialize timers when the page loads
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize prepaid timers
-            @foreach($timers as $deviceId => $timerData)
-                updatePrepaidTimer({{ $deviceId }}, {
-                    end_time: '{{ $timerData['end_time'] }}',
-                    end_date: '{{ $timerData['end_date'] }}',
-                    start_date: '{{ $timerData['start_date'] }}',
-                    start_time: '{{ $timerData['start_time'] }}'
-                });
-            @endforeach
+            // Initialize prepaid and custom package timers
+            document.querySelectorAll('[data-type="prepaid"], [data-type="custom_package"]').forEach(timerElement => {
+                const deviceId = timerElement.id.replace('timer-', '');
+                const timerData = @json($timers);
+                
+                if (timerData[deviceId]) {
+                    updatePrepaidTimer(deviceId, timerData[deviceId]);
+                }
+            });
             
             // Initialize postpaid timers
             document.querySelectorAll('[data-type="postpaid"]').forEach(timerElement => {

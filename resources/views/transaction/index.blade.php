@@ -143,7 +143,17 @@
                                     Lost Time
                                 @endif
                             </td>
-                            <td>{{ $transaksi->jam_main ? $transaksi->jam_main . ' Jam' : '-' }}</td>
+                            <td>
+                                @if($transaksi->jam_main)
+                                    @if($transaksi->tipe_transaksi === 'custom_package')
+                                        {{ $transaksi->jam_main }} Menit
+                                    @else
+                                        {{ $transaksi->jam_main }} Jam
+                                    @endif
+                                @else
+                                    -
+                                @endif
+                            </td>
                             <td>{{ $transaksi->waktu_mulai }}</td>
                             <td>{{ $transaksi->waktu_Selesai ?: '-' }}</td>
                             <td>

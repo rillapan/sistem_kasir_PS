@@ -163,6 +163,31 @@ class DeviceController extends Controller
                             ];
                         }
                     }
+                    // For custom package transactions
+                    elseif ($transaction->tipe_transaksi === 'custom_package' && $transaction->waktu_Selesai) {
+                        // Get the transaction start time and date
+                        $startTime = $transaction->waktu_mulai;
+                        $transactionDate = $transaction->created_at->format('Y-m-d');
+                        
+                        // Create proper datetime objects for start and end times
+                        $startDateTime = Carbon::parse($transactionDate . ' ' . $startTime);
+                        $endDateTime = Carbon::parse($transactionDate . ' ' . $transaction->waktu_Selesai);
+                        
+                        // If end time is earlier than start time, it means it's the next day
+                        if ($endDateTime < $startDateTime) {
+                            $endDateTime->addDay();
+                        }
+                        
+                        // Only set timer if the transaction is still active
+                        if ($endDateTime > $now) {
+                            $timers[$dev->id] = [
+                                'end_time' => $transaction->waktu_Selesai,
+                                'end_date' => $endDateTime->format('Y-m-d'),
+                                'start_date' => $transactionDate,
+                                'start_time' => $startTime
+                            ];
+                        }
+                    }
                     // For postpaid transactions that are still running
                     elseif ($transaction->tipe_transaksi === 'postpaid' && $transaction->status_transaksi === 'berjalan') {
                         $postpaidTransactions[$dev->id] = [

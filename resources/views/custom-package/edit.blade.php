@@ -47,20 +47,20 @@
                 <hr>
                 <h5>Perangkat</h5>
                 <div id="devicesContainer">
-                    @foreach ($package->devices as $index => $device)
+                    @foreach ($package->playstations as $index => $playstation)
                         <div class="device-item row mb-2">
                             <div class="col-md-5">
-                                <select class="form-control device-select" name="devices[{{ $index }}][id]" required>
-                                    <option value="">Pilih Perangkat</option>
-                                    @foreach ($devices as $availableDevice)
-                                        <option value="{{ $availableDevice->id }}" {{ $availableDevice->id == $device->id ? 'selected' : '' }}>
-                                            {{ $availableDevice->playstation->nama }} - {{ $availableDevice->nama }}
+                                <select class="form-control device-select" name="playstations[{{ $index }}][id]" required>
+                                    <option value="">Pilih Jenis PlayStation</option>
+                                    @foreach ($playstations as $availablePlaystation)
+                                        <option value="{{ $availablePlaystation->id }}" {{ $availablePlaystation->id == $playstation->id ? 'selected' : '' }}>
+                                            {{ $availablePlaystation->nama }}
                                         </option>
                                     @endforeach
                                 </select>
                             </div>
                             <div class="col-md-5">
-                                <input type="number" class="form-control" name="devices[{{ $index }}][lama_main]" placeholder="Lama Main (menit)" min="1" value="{{ $device->pivot->lama_main }}" required>
+                                <input type="number" class="form-control" name="playstations[{{ $index }}][lama_main]" placeholder="Lama Main (menit)" min="1" value="{{ $playstation->pivot->lama_main }}" required>
                             </div>
                             <div class="col-md-2">
                                 <button type="button" class="btn btn-danger btn-sm remove-device" @if ($loop->first) style="display: none;" @endif>Hapus</button>
@@ -80,9 +80,16 @@
                                     <select class="form-control fnb-select" name="fnbs[{{ $index }}][id]">
                                         <option value="">Pilih F&B</option>
                                         @foreach ($fnbs as $availableFnb)
-                                            <option value="{{ $availableFnb->id }}" {{ $availableFnb->id == $fnb->id ? 'selected' : '' }}>
-                                                {{ $availableFnb->nama }} (Stok: {{ $availableFnb->stok }})
-                                            </option>
+                                            @if($availableFnb->stok == -1 || $availableFnb->stok >= 1)
+                                                <option value="{{ $availableFnb->id }}" {{ $availableFnb->id == $fnb->id ? 'selected' : '' }}>
+                                                    {{ $availableFnb->nama }}
+                                                    @if($availableFnb->stok == -1)
+                                                        <span class="badge badge-success">Unlimited</span>
+                                                    @else
+                                                        (Stok: {{ $availableFnb->stok }})
+                                                    @endif
+                                                </option>
+                                            @endif
                                         @endforeach
                                     </select>
                                 </div>
@@ -100,7 +107,16 @@
                                 <select class="form-control fnb-select" name="fnbs[0][id]">
                                     <option value="">Pilih F&B</option>
                                     @foreach ($fnbs as $availableFnb)
-                                        <option value="{{ $availableFnb->id }}">{{ $availableFnb->nama }} (Stok: {{ $availableFnb->stok }})</option>
+                                        @if($availableFnb->stok == -1 || $availableFnb->stok >= 1)
+                                            <option value="{{ $availableFnb->id }}">
+                                                {{ $availableFnb->nama }}
+                                                @if($availableFnb->stok == -1)
+                                                    <span class="badge badge-success">Unlimited</span>
+                                                @else
+                                                    (Stok: {{ $availableFnb->stok }})
+                                                @endif
+                                            </option>
+                                        @endif
                                     @endforeach
                                 </select>
                             </div>
@@ -125,7 +141,7 @@
     </div>
 
     <script>
-        let deviceIndex = {{ $package->devices->count() }};
+        let deviceIndex = {{ $package->playstations->count() }};
         let fnbIndex = {{ $package->fnbs->count() > 0 ? $package->fnbs->count() : 1 }};
 
         document.getElementById('addDevice').addEventListener('click', function() {
@@ -134,15 +150,15 @@
             deviceItem.className = 'device-item row mb-2';
             deviceItem.innerHTML = `
                 <div class="col-md-5">
-                    <select class="form-control device-select" name="devices[${deviceIndex}][id]" required>
+                    <select class="form-control device-select" name="playstations[${deviceIndex}][id]" required>
                         <option value="">Pilih Perangkat</option>
-                        @foreach ($devices as $device)
-                            <option value="{{ $device->id }}">{{ $device->playstation->nama }} - {{ $device->nama }}</option>
+                        @foreach ($playstations as $playstation)
+                            <option value="{{ $playstation->id }}">{{ $playstation->nama }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="col-md-5">
-                    <input type="number" class="form-control" name="devices[${deviceIndex}][lama_main]" placeholder="Lama Main (menit)" min="1" required>
+                    <input type="number" class="form-control" name="playstations[${deviceIndex}][lama_main]" placeholder="Lama Main (menit)" min="1" required>
                 </div>
                 <div class="col-md-2">
                     <button type="button" class="btn btn-danger btn-sm remove-device">Hapus</button>

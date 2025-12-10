@@ -73,7 +73,16 @@
                             <select class="form-control fnb-select" name="fnbs[0][id]">
                                 <option value="">Pilih F&B</option>
                                 @foreach ($fnbs as $fnb)
-                                    <option value="{{ $fnb->id }}">{{ $fnb->nama }} (Stok: {{ $fnb->stok }})</option>
+                                    @if($fnb->stok == -1 || $fnb->stok >= 1)
+                                        <option value="{{ $fnb->id }}">
+                                            {{ $fnb->nama }}
+                                            @if($fnb->stok == -1)
+                                                <span class="badge badge-success">Unlimited</span>
+                                            @else
+                                                (Stok: {{ $fnb->stok }})
+                                            @endif
+                                        </option>
+                                    @endif
                                 @endforeach
                             </select>
                         </div>
@@ -134,7 +143,16 @@
                     <select class="form-control fnb-select" name="fnbs[${fnbIndex}][id]">
                         <option value="">Pilih F&B</option>
                         @foreach ($fnbs as $fnb)
-                            <option value="{{ $fnb->id }}">{{ $fnb->nama }} (Stok: {{ $fnb->stok }})</option>
+                            @if($fnb->stok == -1 || $fnb->stok >= 1)
+                                <option value="{{ $fnb->id }}">
+                                    {{ $fnb->nama }}
+                                    @if($fnb->stok == -1)
+                                        <span class="badge badge-success">Unlimited</span>
+                                    @else
+                                        (Stok: {{ $fnb->stok }})
+                                    @endif
+                                </option>
+                            @endif
                         @endforeach
                     </select>
                 </div>

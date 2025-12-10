@@ -225,7 +225,7 @@ class TransactionController extends Controller
             // Calculate total playtime from package
             $totalJamMain = $customPackage->playstations->sum('pivot.lama_main');
             $validatedData['jam_main'] = $totalJamMain;
-            $validatedData['waktu_Selesai'] = Carbon::parse($start_time)->addHours($totalJamMain)->format('H:i');
+            $validatedData['waktu_Selesai'] = Carbon::parse($start_time)->addMinutes($totalJamMain)->format('H:i');
 
         } elseif ($request->tipe_transaksi === 'prepaid') {
             $validatedData['waktu_Selesai'] = $end_time;

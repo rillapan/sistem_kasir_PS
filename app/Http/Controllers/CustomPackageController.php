@@ -69,7 +69,7 @@ class CustomPackageController extends Controller
                 ]);
             }
         }
-        return redirect('transaction')->with('success', 'Data transaksi berhasil disimpan.');
+        return redirect()->route('custom-package.index')->with('success', 'Paket kustom berhasil dibuat!');
     }
 
     public function show($id)
