@@ -18,13 +18,9 @@
                             <td>{{ $transaction->id_transaksi }}</td>
                         </tr>
                         <tr>
-                            <td><strong>Nama:</strong></td>
+                            <td><strong>Nama Pelanggan :</strong></td>
                             <td>
-                                @if($transaction->tipe_transaksi === 'custom_package' && $transaction->custom_package)
-                                    {{ $transaction->custom_package->nama_paket }}
-                                @else
                                     {{ $transaction->nama }}
-                                @endif
                             </td>
                         </tr>
                         <tr>

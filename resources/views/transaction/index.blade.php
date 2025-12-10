@@ -113,6 +113,7 @@
                             <option value="all" {{ $currentType == 'all' ? 'selected' : '' }}>Semua</option>
                             <option value="prepaid" {{ $currentType == 'prepaid' ? 'selected' : '' }}>Paket</option>
                             <option value="postpaid" {{ $currentType == 'postpaid' ? 'selected' : '' }}>Lost Time</option>
+                            <option value="custom_package" {{ $currentType == 'custom_package' ? 'selected' : '' }}>Custom Paket</option>
                         </select>
                         <button type="submit" class="btn btn-primary btn-sm">Filter</button>
                     </form>
@@ -135,8 +136,7 @@
                     <tr>
                         <th scope="col">ID Transaksi</th>
                         <th scope="col">Nama</th>
-                        <th scope="col">Nama Perangkat</th>
-                        <th scope="col">Jenis Playstation</th>
+                        <th scope="col">Data Perangkat</th>
                         <th scope="col">Tipe</th>
                         <th scope="col">Jam Main</th>
                         <th scope="col">Waktu Mulai</th>
@@ -158,13 +158,18 @@
                         <tr>
                             <td>{{ $transaksi->id_transaksi }}</td>
                             <td>{{ $transaksi->nama }}</td>
-                            <td>{{ $transaksi->device ? $transaksi->device->nama : 'N/A' }}</td>
-                            <td>{{ $transaksi->device && $transaksi->device->playstation ? $transaksi->device->playstation->nama : 'N/A' }}</td>
+                            <td>
+                                @if($transaksi->device && $transaksi->device->playstation)
+                                    {{ $transaksi->device->nama }} - {{ $transaksi->device->playstation->nama }}
+                                @else
+                                    N/A
+                                @endif
+                            </td>
                             <td>
                                 @if($transaksi->tipe_transaksi === 'prepaid')
                                     Paket
                                 @elseif($transaksi->tipe_transaksi === 'custom_package')
-                                    Custom Paket
+                                    Custom Paket - {{ $transaksi->custom_package ? $transaksi->custom_package->nama_paket : 'N/A' }}
                                 @else
                                     Lost Time
                                 @endif
