@@ -42,11 +42,16 @@ class TransactionsExport implements FromView, ShouldAutoSize, WithHeadings, With
         return [
             'ID Transaksi',
             'Nama',
-            'Nama Perangkat',
-            'Jenis Playstation',
-            'Lama Waktu',
-            'Harga Total',
-            'Tanggal Transaksi',
+            'Data Perangkat',
+            'Tipe',
+            'Jam Main',
+            'Waktu Mulai',
+            'Waktu Selesai',
+            'FnB',
+            'Total',
+            'Diskon',
+            'Total Setelah Diskon',
+            'Tanggal',
         ];
     }
 
@@ -63,14 +68,11 @@ class TransactionsExport implements FromView, ShouldAutoSize, WithHeadings, With
             ],
         ];
 
+        // Apply borders to all 12 columns (A-L)
         for ($row = 4; $row <= $rowCount; $row++) {
-            $sheet->getStyle('A' . $row . ':A' . $row)->applyFromArray($styleArray);
-            $sheet->getStyle('B' . $row . ':B' . $row)->applyFromArray($styleArray);
-            $sheet->getStyle('C' . $row . ':C' . $row)->applyFromArray($styleArray);
-            $sheet->getStyle('D' . $row . ':D' . $row)->applyFromArray($styleArray);
-            $sheet->getStyle('E' . $row . ':E' . $row)->applyFromArray($styleArray);
-            $sheet->getStyle('F' . $row . ':F' . $row)->applyFromArray($styleArray);
-            $sheet->getStyle('G' . $row . ':G' . $row)->applyFromArray($styleArray);
+            foreach (range('A', 'L') as $column) {
+                $sheet->getStyle($column . $row . ':' . $column . $row)->applyFromArray($styleArray);
+            }
         }
     }
 }

@@ -27,42 +27,10 @@
         Laporan Transaksi Rental Playstation
     </h3>
     <p class="mb-2">Dari Tanggal: {{ $startDate }} Sampai: {{ $endDate }}</p>
-    <table class="table">
-        <thead>
-            <tr>
-                <th scope="col">ID Transaksi</th>
-                <th scope="col">Nama</th>
-                <th scope="col">Nama Perangkat</th>
-                <th scope="col">Jenis Playstation</th>
-                <th scope="col">Lama Waktu</th>
-                <th scope="col">Total</th>
-                <th scope="col">Tanggal Transaksi</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach ($transactions as $transaksi)
-                <tr>
-                    <td>{{ $transaksi->id_transaksi }}</td>
-                    <td>{{ $transaksi->nama }}</td>
-                    <td>{{ $transaksi->device->nama }}</td>
-                    <td>{{ $transaksi->device->playstation->nama }}</td>
-                    <td>{{ $transaksi->jam_main . ' Jam' }}</td>
-                    <td>{{ 'Rp ' . number_format($transaksi->total, 0, ',', '.') }}</td>
-                    <td>{{ $transaksi->created_at }}</td>
-                </tr>
-            @endforeach
-        </tbody>
-        <tfoot>
-            <tr>
-                <td>Total: </td>
-                <td colspan="6">{{ 'Rp ' . number_format($total, 0, ',', '.') }}</td>
-            </tr>
-        </tfoot>
-    </table>
-
+    
     @if(isset($dailyTotals) && $dailyTotals->count() > 0)
-    <h4 class="mt-4">Statistik Pendapatan Harian</h4>
-    <table class="table">
+    <h4 class="mt-4 mb-3">Statistik Pendapatan Harian</h4>
+    <table class="table" style="margin-bottom: 30px;">
         <thead>
             <tr>
                 <th>Tanggal</th>
@@ -79,6 +47,94 @@
         </tbody>
     </table>
     @endif
+
+    <h4 class="mt-4 mb-3">Detail Transaksi</h4>
+    <table class="table" style="font-size: 10px;">
+        <thead>
+            <tr>
+                <th scope="col">ID Transaksi</th>
+                <th scope="col">Nama</th>
+                <th scope="col">Data Perangkat</th>
+                <th scope="col">Tipe</th>
+                <th scope="col">Jam Main</th>
+                <th scope="col">Waktu Mulai</th>
+                <th scope="col">Waktu Selesai</th>
+                <th scope="col">FnB</th>
+                <th scope="col">Total</th>
+                <th scope="col">Diskon</th>
+                <th scope="col">Total Setelah Diskon</th>
+                <th scope="col">Tanggal</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach ($transactions as $transaksi)
+                <tr>
+                    <td>{{ $transaksi->id_transaksi }}</td>
+                    <td>{{ $transaksi->nama }}</td>
+                    <td>
+                        @if($transaksi->device && $transaksi->device->playstation)
+                            {{ $transaksi->device->nama }} - {{ $transaksi->device->playstation->nama }}
+                        @else
+                            -
+                        @endif
+                    </td>
+                    <td>
+                        @if($transaksi->tipe_transaksi === 'prepaid')
+                            Paket
+                        @elseif($transaksi->tipe_transaksi === 'custom_package')
+                            Custom Paket
+                        @else
+                            Lost Time
+                        @endif
+                    </td>
+                    <td>
+                        @if($transaksi->jam_main)
+                            @if($transaksi->tipe_transaksi === 'custom_package')
+                                {{ $transaksi->jam_main }} Menit
+                            @else
+                                {{ $transaksi->jam_main }} Jam
+                            @endif
+                        @else
+                            -
+                        @endif
+                    </td>
+                    <td>{{ $transaksi->waktu_mulai }}</td>
+                    <td>{{ $transaksi->waktu_Selesai ?: '-' }}</td>
+                    <td>
+                        @if($transaksi->transactionFnbs->isEmpty())
+                            -
+                        @else
+                            @foreach($transaksi->transactionFnbs as $fnbItem)
+                                {{ $fnbItem->fnb->nama }} ({{ $fnbItem->qty }} x Rp {{ number_format($fnbItem->harga_jual, 0, ',', '.') }})@if(!$loop->last), @endif
+                            @endforeach
+                        @endif
+                    </td>
+                    <td>{{ 'Rp ' . number_format($transaksi->total, 0, ',', '.') }}</td>
+                    <td>
+                        @if($transaksi->diskon && $transaksi->diskon > 0)
+                            {{ $transaksi->diskon }}%
+                        @else
+                            -
+                        @endif
+                    </td>
+                    <td>
+                        @if($transaksi->diskon && $transaksi->diskon > 0)
+                            {{ 'Rp ' . number_format($transaksi->total - ($transaksi->total * $transaksi->diskon / 100), 0, ',', '.') }}
+                        @else
+                            {{ 'Rp ' . number_format($transaksi->total, 0, ',', '.') }}
+                        @endif
+                    </td>
+                    <td>{{ $transaksi->created_at }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="8"><strong>Total:</strong></td>
+                <td colspan="4"><strong>{{ 'Rp ' . number_format($total, 0, ',', '.') }}</strong></td>
+            </tr>
+        </tfoot>
+    </table>
 
     <!-- Bootstrap core JavaScript-->
     <script src="vendor/jquery/jquery.min.js"></script>

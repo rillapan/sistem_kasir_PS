@@ -77,7 +77,7 @@ class ReportController extends Controller
         $start = Carbon::parse($startDate);
         $end = Carbon::parse($endDate)->endOfDay();
 
-        $transactions = Transaction::with('device.playstation')
+        $transactions = Transaction::with(['device.playstation', 'transactionFnbs.fnb', 'custom_package'])
             ->where('payment_status', 'paid')
             ->whereBetween('created_at', [$start, $end])
             ->get();
@@ -108,7 +108,7 @@ class ReportController extends Controller
         $start = Carbon::parse($startDate);
         $end = Carbon::parse($endDate)->endOfDay();
 
-        $transactions = Transaction::with('device.playstation')
+        $transactions = Transaction::with(['device.playstation', 'transactionFnbs.fnb', 'custom_package'])
             ->where('payment_status', 'paid')
             ->whereBetween('created_at', [$start, $end])
             ->get();

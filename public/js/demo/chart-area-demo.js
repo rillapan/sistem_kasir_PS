@@ -27,104 +27,107 @@ function number_format(number, decimals, dec_point, thousands_sep) {
   return s.join(dec);
 }
 
-// Area Chart Example
-var ctx = document.getElementById("myAreaChart");
-console.log('Chart element found:', ctx);
+// Area Chart Example - Wrapped in DOMContentLoaded to ensure DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+  var ctx = document.getElementById("myAreaChart");
+  console.log('Chart element found:', ctx);
 
-if (ctx) {
-  var myLineChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: [], // Will be populated with hourly labels
-      datasets: [],
-    },
-  options: {
-    maintainAspectRatio: false,
-    layout: {
-      padding: {
-        left: 10,
-        right: 25,
-        top: 25,
-        bottom: 0
-      }
-    },
-    scales: {
-      xAxes: [{
-        time: {
-          unit: 'hour'
-        },
-        gridLines: {
-          display: false,
-          drawBorder: false
-        },
-        ticks: {
-          maxTicksLimit: 12, // Show more ticks for hourly data
-          autoSkip: true,
-          maxRotation: 0,
-          minRotation: 0
+  if (ctx) {
+    var myLineChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [], // Will be populated with hourly labels
+        datasets: [],
+      },
+    options: {
+      maintainAspectRatio: false,
+      layout: {
+        padding: {
+          left: 10,
+          right: 25,
+          top: 25,
+          bottom: 0
         }
-      }],
-      yAxes: [{
-        ticks: {
-          maxTicksLimit: 5,
-          padding: 10,
-          // Include a dollar sign in the ticks
-          callback: function(value, index, values) {
-            return 'Rp' + number_format(value, ',', '.');
+      },
+      scales: {
+        xAxes: [{
+          time: {
+            unit: 'hour'
+          },
+          gridLines: {
+            display: false,
+            drawBorder: false
+          },
+          ticks: {
+            maxTicksLimit: 12, // Show more ticks for hourly data
+            autoSkip: true,
+            maxRotation: 0,
+            minRotation: 0
           }
-        },
-        gridLines: {
-          color: "rgb(234, 236, 244)",
-          zeroLineColor: "rgb(234, 236, 244)",
-          drawBorder: false,
-          borderDash: [2],
-          zeroLineBorderDash: [2]
-        }
-      }],
-    },
-    legend: {
-      display: false
-    },
-    tooltips: {
-      backgroundColor: "rgb(255,255,255)",
-      bodyFontColor: "#858796",
-      titleMarginBottom: 10,
-      titleFontColor: '#6e707e',
-      titleFontSize: 14,
-      borderColor: '#dddfeb',
-      borderWidth: 1,
-      xPadding: 15,
-      yPadding: 15,
-      displayColors: false,
-      intersect: false,
-      mode: 'index',
-      caretPadding: 10,
-      callbacks: {
-        label: function(tooltipItem, chart) {
-          var datasetLabel = chart.datasets[tooltipItem.datasetIndex].label || '';
-          return datasetLabel + ': Rp' + number_format(tooltipItem.yLabel);
+        }],
+        yAxes: [{
+          ticks: {
+            maxTicksLimit: 5,
+            padding: 10,
+            // Include a dollar sign in the ticks
+            callback: function(value, index, values) {
+              return 'Rp' + number_format(value, ',', '.');
+            }
+          },
+          gridLines: {
+            color: "rgb(234, 236, 244)",
+            zeroLineColor: "rgb(234, 236, 244)",
+            drawBorder: false,
+            borderDash: [2],
+            zeroLineBorderDash: [2]
+          }
+        }],
+      },
+      legend: {
+        display: false
+      },
+      tooltips: {
+        backgroundColor: "rgb(255,255,255)",
+        bodyFontColor: "#858796",
+        titleMarginBottom: 10,
+        titleFontColor: '#6e707e',
+        titleFontSize: 14,
+        borderColor: '#dddfeb',
+        borderWidth: 1,
+        xPadding: 15,
+        yPadding: 15,
+        displayColors: false,
+        intersect: false,
+        mode: 'index',
+        caretPadding: 10,
+        callbacks: {
+          label: function(tooltipItem, chart) {
+            var datasetLabel = chart.datasets[tooltipItem.datasetIndex].label || '';
+            return datasetLabel + ': Rp' + number_format(tooltipItem.yLabel);
+          }
         }
       }
     }
-  }
-  });
-} else {
-  console.error('Chart element with id "myAreaChart" not found');
-}
+    });
 
-$.get('/hourly-revenue-data', function(data) {
-  console.log('Hourly revenue data received:', data);
-  console.log('Labels:', data.labels);
-  console.log('Datasets:', data.datasets);
-  if (typeof myLineChart !== 'undefined') {
-    myLineChart.data.labels = data.labels;
-    myLineChart.data.datasets = data.datasets;
-    myLineChart.update();
+    // Load hourly revenue data via AJAX
+    $.get('/hourly-revenue-data', function(data) {
+      console.log('Hourly revenue data received:', data);
+      console.log('Labels:', data.labels);
+      console.log('Datasets:', data.datasets);
+      if (typeof myLineChart !== 'undefined') {
+        myLineChart.data.labels = data.labels;
+        myLineChart.data.datasets = data.datasets;
+        myLineChart.update();
+      } else {
+        console.error('Chart not initialized');
+      }
+    }).fail(function(xhr, status, error) {
+      console.error('Error loading hourly revenue data:', error);
+      console.log('XHR status:', xhr.status);
+      console.log('Response text:', xhr.responseText);
+    });
   } else {
-    console.error('Chart not initialized');
+    console.log('Chart element with id "myAreaChart" not found - this is normal if not on the dashboard page');
   }
-}).fail(function(xhr, status, error) {
-  console.error('Error loading hourly revenue data:', error);
-  console.log('XHR status:', xhr.status);
-  console.log('Response text:', xhr.responseText);
 });

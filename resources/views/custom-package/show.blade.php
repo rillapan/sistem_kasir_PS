@@ -81,7 +81,7 @@
                             <tbody>
                                 @foreach ($package->devices as $device)
                                     <tr>
-                                        <td>{{ $device->playstation->nama }} - {{ $device->nama }}</td>
+                                        <td>{{ $device->playstation?->nama ?? 'N/A' }} - {{ $device->nama }}</td>
                                         <td>{{ $device->pivot->lama_main }} menit</td>
                                     </tr>
                                 @endforeach
@@ -127,7 +127,7 @@
                         <h6>{{ $package->nama_paket }}</h6>
                         @foreach ($package->devices as $device)
                             <p class="mb-1">
-                                <i class="fas fa-gamepad"></i> {{ $device->playstation->nama }} - {{ $device->nama }} ({{ $device->pivot->lama_main }} menit)
+                                <i class="fas fa-gamepad"></i> {{ $device->playstation?->nama ?? 'N/A' }} - {{ $device->nama }} ({{ $device->pivot->lama_main }} menit)
                             </p>
                         @endforeach
                         @foreach ($package->fnbs as $fnb)
