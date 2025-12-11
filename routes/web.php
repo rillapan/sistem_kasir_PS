@@ -44,6 +44,7 @@ Route::middleware(['auth', 'check_role:admin,kasir'])->group(function () {
     Route::resource('/transaction', App\Http\Controllers\TransactionController::class);
     Route::get('/transaction/{id}/payment', [App\Http\Controllers\TransactionController::class, 'showPayment'])->name('transaction.showPayment');
     Route::post('/transaction/{id}/process-payment', [App\Http\Controllers\TransactionController::class, 'processPayment'])->name('transaction.processPayment');
+    Route::get('/transaction/{id}/print', [App\Http\Controllers\TransactionController::class, 'printReceipt'])->name('transaction.print');
     Route::put('/transaction/{id}/update', 'App\Http\Controllers\TransactionController@updateStatus');
     Route::post('/transaction/{id}/end', 'App\Http\Controllers\TransactionController@endTransaction')->name('transaction.end');
     Route::get('/transaction/{id}/add-order', [App\Http\Controllers\TransactionController::class, 'addOrder'])->name('transaction.add-order');

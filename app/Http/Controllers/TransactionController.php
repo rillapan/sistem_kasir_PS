@@ -30,6 +30,32 @@ class TransactionController extends Controller
         ]);
     }
 
+    public function printReceipt($id)
+    {
+        $transaction = Transaction::with(['device.playstation', 'transactionFnbs.fnb', 'user', 'custom_package.playstations', 'custom_package.fnbs'])->findOrFail($id);
+        
+        // Retrieve temporary payment data from session if available
+        $amountPaid = session('amount_paid');
+        $change = session('change');
+        
+        // If viewing from history (no session data), assume exact payment or calculate if we had the field
+        if ($amountPaid === null) {
+            // For older transactions or re-prints, we don't have the exact amount paid recorded on this table structure yet
+            // So we display standard info
+        } else {
+            // Inject into transaction object temporarily for the view
+            $transaction->bayar_nominal = $amountPaid;
+            $transaction->kembalian = $change;
+        }
+
+        // Preserve flash messages for the next redirect (to index)
+        session()->keep(['success', 'gagal']);
+
+        return view('transaction.receipt', [
+            'transaction' => $transaction
+        ]);
+    }
+
     public function processPayment(Request $request, $id)
     {
         $transaction = Transaction::findOrFail($id);
@@ -69,7 +95,12 @@ class TransactionController extends Controller
             $transaction->device->update(['status' => 'Tersedia']);
         }
 
-        return redirect('transaction')->with('success', 'Pembayaran berhasil. Kembalian: Rp ' . number_format($change, 0, ',', '.'));
+        return redirect()->route('transaction.print', ['id' => $transaction->id_transaksi, 'action' => 'payment'])
+            ->with([
+                'success' => 'Pembayaran berhasil. Kembalian: Rp ' . number_format($change, 0, ',', '.'),
+                'amount_paid' => $amountPaid,
+                'change' => $change
+            ]);
     }
 
     /**

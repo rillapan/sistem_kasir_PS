@@ -48,22 +48,6 @@
                                     </div>
                                 @enderror
                             </div>
-                            <div class="form-group col-md-6">
-                                <label for="status">Status</label>
-                                <select id="status" name="status"
-                                    class="form-control @error('status') is-invalid @enderror">
-                                    @if (old('status', auth()->user()->status) === 'admin')
-                                        <option value="admin" selected>Admin</option>
-                                        <option value="owner">Owner</option>
-                                    @elseif(old('status', auth()->user()->status) === 'owner')
-                                        <option value="admin">Admin</option>
-                                        <option value="owner" selected>Owner</option>
-                                    @else
-                                        <option value="admin">Admin</option>
-                                        <option value="owner">Owner</option>
-                                    @endif
-                                </select>
-                            </div>
                         </div>
                         <div class="form-group">
                             <label for="email">Email</label>

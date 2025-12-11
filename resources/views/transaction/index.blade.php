@@ -235,6 +235,11 @@
                                         <a href="{{ route('transaction.show', ['transaction' => $transaksi->id_transaksi]) }}" class="btn btn-info btn-sm" title="Detail">
                                             <i class="fas fa-eye"></i>
                                         </a>
+                                        @if($transaksi->payment_status === 'paid')
+                                            <a href="{{ route('transaction.print', $transaksi->id_transaksi) }}" class="btn btn-secondary btn-sm" title="Cetak Struk" target="_blank">
+                                                <i class="fas fa-print"></i>
+                                            </a>
+                                        @endif
                                         @if($transaksi->payment_status === 'unpaid')
                                             <a href="{{ route('transaction.showPayment', ['id' => $transaksi->id_transaksi]) }}" class="btn btn-success btn-sm" title="Bayar">
                                                 <i class="fas fa-credit-card"></i> Bayar
