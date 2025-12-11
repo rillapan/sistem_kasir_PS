@@ -54,6 +54,10 @@
                             <td>
                                 <a href="{{ route('users.edit', $user->id) }}" class="btn btn-warning btn-sm"><i class="fas fa-edit"></i> Edit</a>
                                 @if($user->id !== auth()->id())
+                                <form action="{{ route('users.reset-password', $user->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Yakin ingin mereset password user ini menjadi default (password)?')">
+                                    @csrf
+                                    <button type="submit" class="btn btn-warning btn-sm" title="Reset Password"><i class="fas fa-key"></i> Reset</button>
+                                </form>
                                 <form action="{{ route('users.destroy', $user->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Yakin ingin menghapus user ini?')">
                                     @csrf
                                     @method('DELETE')

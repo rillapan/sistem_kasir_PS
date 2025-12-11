@@ -78,6 +78,7 @@ Route::middleware(['auth', 'check_role:admin,owner'])->group(function () {
 Route::middleware(['auth', 'check_role:admin'])->group(function () {
     // User Management
     Route::resource('/users', App\Http\Controllers\UserManagementController::class);
+    Route::post('/users/{id}/reset-password', [App\Http\Controllers\UserManagementController::class, 'resetPassword'])->name('users.reset-password');
 
     // Master Data
     Route::resource('/playstation', App\Http\Controllers\PlayController::class);

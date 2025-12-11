@@ -204,10 +204,7 @@ class TransactionController extends Controller
         $start_time = Carbon::now()->format('H:i');
         $jam_main = $request->jam_main;
         $end_time = Carbon::parse($start_time)->addHours((int)$jam_main)->format('H:i');
-        if (auth()->user()->status !== 'admin' && ($start_time > '22:00' || $start_time < '08:00')) {
-            $redirectUrl = $request->transaksi ? 'transaction' : 'booking/' . $request->device_id;
-            return redirect($redirectUrl)->with('gagal', 'Maaf, rental sudah tutup!. Silahkan melakukan booking ketika rental sudah beroprasi kembali pada pukul 08:00.');
-        }
+       
         // Mengecek apakah waktu mulai dan waktu selesai sudah ada di database
         $existingTransaction = Transaction::where('device_id', $request->device_id)->whereDate('created_at', $tanggal)
             ->where(function ($query) use ($start_time, $end_time) {

@@ -131,4 +131,21 @@ class UserManagementController extends Controller
 
         return redirect()->route('users.index')->with('success', 'User berhasil dihapus');
     }
+
+    public function resetPassword($id)
+    {
+        $user = User::findOrFail($id);
+        
+        // Prevent resetting self if needed, but not strictly required. 
+        // Admin might want to reset their own password to default? 
+        // Let's allow it or blocking it? 
+        // Prompt implies "admin bisa mereset (password yang sudah diganti kembali ke default)" for others usually.
+        // Let's just do it.
+
+        $user->update([
+            'password' => Hash::make('password')
+        ]);
+
+        return redirect()->route('users.index')->with('success', 'Password user berhasil direset ke default (password).');
+    }
 }

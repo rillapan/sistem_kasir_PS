@@ -60,15 +60,21 @@
                             @enderror
                         </div>
                         <div class="form-group">
-                            <label for="password">Password</label>
+                            <label for="password">New Password</label>
                             <input type="password" name="password"
                                 class="form-control @error('password') is-invalid @enderror" id="password"
-                                value="{{ old('password', auth()->user()->password) }}">
+                                autocomplete="new-password">
                             @error('password')
                                 <div class="invalid-feedback">
                                     {{ $message }}
                                 </div>
                             @enderror
+                        </div>
+                        <div class="form-group">
+                            <label for="password_confirmation">Confirm Password</label>
+                            <input type="password" name="password_confirmation"
+                                class="form-control" id="password_confirmation"
+                                autocomplete="new-password">
                         </div>
                         <button type="submit" class="btn btn-sm btn-primary">Simpan</button>
                     </form>

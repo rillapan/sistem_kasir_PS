@@ -80,6 +80,10 @@
                                         <button type="submit" class="btn btn-primary btn-user btn-block">
                                             Login
                                         </button>
+                                        <hr>
+                                        <div class="text-center small">
+                                            Jika lupa password minta hubungi admin untuk mereset password anda
+                                        </div>
                                     </form>
                                     
                                    

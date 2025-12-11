@@ -252,7 +252,13 @@ class HomeController extends Controller
 
     public function update(Request $request, $id)
     {
-        $user = User::find($id);
+        $user = User::findOrFail($id);
+        
+        // Ensure user is updating their own profile
+        if (auth()->id() !== $user->id) {
+            abort(403);
+        }
+
         $validatedData = $request->validate([
             'name' => 'required|min:3',
             'email' => [
@@ -260,16 +266,19 @@ class HomeController extends Controller
                 'email',
                 Rule::unique('users')->ignore($user->id),
             ],
-            'password' => 'required|min:8',
-            'status' => 'required'
+            'password' => 'nullable|min:6|confirmed',
         ]);
 
-        if ($request->password === $user->password) {
-            unset($validatedData['password']);
-        } else {
-            $validatedData['password'] = Hash::make($validatedData['password']);
+        $dataToUpdate = [
+            'name' => $validatedData['name'],
+            'email' => $validatedData['email'],
+        ];
+
+        if ($request->filled('password')) {
+            $dataToUpdate['password'] = Hash::make($validatedData['password']);
         }
-        User::where('id', $id)->update($validatedData);
+
+        $user->update($dataToUpdate);
 
         return redirect('/profile')->with('success', 'Profile berhasil di update.');
     }

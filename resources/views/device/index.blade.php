@@ -71,7 +71,7 @@
                     aria-haspopup="true" aria-expanded="false">
                 </a>
 
-                @if (auth()->user()->status === 'admin')
+                @if (auth()->user()->role === 'admin')
                     <a href="{{ route('device.create') }}" class="btn btn-primary btn-sm">Tambah Data</a>
                 @endif
             </div>
@@ -148,14 +148,16 @@
                                         </button>
                                     @endif
 
-                                    @if (auth()->user()->status === 'admin')
+                                    @if (auth()->user()->role === 'admin' || auth()->user()->role === 'kasir')
                                         @if (isset($customers[$device->id]) && $customers[$device->id]['tipe_transaksi'] === 'postpaid' && $customers[$device->id]['status_transaksi'] === 'berjalan')
-                                            <form action="{{ route('transaction.end', $customers[$device->id]['id_transaksi']) }}" method="POST" class="d-inline">
-                                                @csrf
-                                                <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Apakah Anda yakin ingin menyelesaikan transaksi ini?')">
-                                                    <i class="fas fa-check"></i> Selesai
-                                                </button>
-                                            </form>
+                                            <button type="button" class="btn btn-sm btn-success" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#finishTransactionModal"
+                                                data-action="{{ route('transaction.end', $customers[$device->id]['id_transaksi']) }}"
+                                                data-device-id="{{ $device->id }}"
+                                                data-device-info="{{ $device->playstation->nama ?? 'Unknown' }} | {{ $device->nama }}">
+                                                <i class="fas fa-check"></i> Selesai
+                                            </button>
                                         @endif
                                         <a href="/device/{{ $device->id }}/edit" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i></a>
                                         <form action="/device/{{ $device->id }}" method="post" class="d-inline">
@@ -199,6 +201,30 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Finish Transaction Modal -->
+    <div class="modal fade" id="finishTransactionModal" tabindex="-1" aria-labelledby="finishTransactionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="finishTransactionModalLabel">Konfirmasi Selesai</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <h5>Apakah Anda yakin ingin menyelesaikan transaksi ini?</h5>
+                    <h2 id="modal-finish-timer" class="text-primary my-3 font-weight-bold">00:00:00</h2>
+                    <p class="mb-0 text-muted font-weight-bold" id="modal-finish-device">Jenis PS | Nama Perangkat</p>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <form id="finishTransactionForm" method="POST" action="">
+                        @csrf
+                        <button type="submit" class="btn btn-success"><i class="fas fa-check"></i> Ya, Selesai</button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -331,6 +357,31 @@
                 document.getElementById('modal-waktu-selesai').textContent = waktuSelesai || 'Tidak tersedia';
                 document.getElementById('modal-total').textContent = total || 'Tidak tersedia';
                 document.getElementById('modal-tanggal').textContent = tanggal || 'Tidak tersedia';
+            });
+        }
+
+        // Finish Transaction Modal Script
+        var finishTransactionModal = document.getElementById('finishTransactionModal');
+        if (finishTransactionModal) {
+            finishTransactionModal.addEventListener('show.bs.modal', function (event) {
+                var button = event.relatedTarget;
+                var actionUrl = button.getAttribute('data-action');
+                var deviceId = button.getAttribute('data-device-id');
+                var deviceInfo = button.getAttribute('data-device-info');
+
+                // Update Form Action
+                document.getElementById('finishTransactionForm').action = actionUrl;
+
+                // Update Device Info
+                document.getElementById('modal-finish-device').textContent = deviceInfo;
+
+                // Update Timer Snapshot
+                var timerElement = document.getElementById('timer-' + deviceId);
+                var timerValue = '00:00:00';
+                if (timerElement) {
+                    timerValue = timerElement.innerText.trim();
+                }
+                document.getElementById('modal-finish-timer').textContent = timerValue;
             });
         }
     </script>
