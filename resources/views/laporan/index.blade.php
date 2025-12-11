@@ -81,21 +81,36 @@
                     <h6 class="m-0 font-weight-bold text-primary">Generate Laporan Berdasarkan Tanggal</h6>
                 </div>
                 <div class="card-body">
-                    <form method="GET" action="{{ route('report') }}">
+                    <form method="GET" action="{{ route('report') }}" id="reportForm">
                         @csrf
                         <div class="form-group row">
+                            <label for="period" class="col-sm-2 col-form-label">Periode</label>
+                            <div class="col-sm-4">
+                                <select class="form-control" id="period" name="period">
+                                    <option value="" {{ !request('period') ? 'selected' : '' }}>Pilih Periode</option>
+                                    <option value="today" {{ request('period') == 'today' ? 'selected' : '' }}>Hari Ini</option>
+                                    <option value="this_week" {{ request('period') == 'this_week' ? 'selected' : '' }}>Minggu Ini</option>
+                                    <option value="this_month" {{ request('period') == 'this_month' ? 'selected' : '' }}>Bulan Ini</option>
+                                    <option value="this_year" {{ request('period') == 'this_year' ? 'selected' : '' }}>Tahun Ini</option>
+                                    <option value="custom" {{ request('period') == 'custom' ? 'selected' : '' }}>Custom Range</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group row" id="customDateRange" style="{{ request('period') == 'custom' ? '' : 'display: none;' }}">
                             <label for="tanggal_awal" class="col-sm-2 col-form-label">Tanggal Awal</label>
                             <div class="col-sm-4">
-                                <input type="date" class="form-control" id="tanggal_awal" name="tanggal_awal" value="{{ $startDate }}" required>
+                                <input type="date" class="form-control" id="tanggal_awal" name="tanggal_awal" value="{{ $startDate }}">
                             </div>
                             <label for="tanggal_akhir" class="col-sm-2 col-form-label">Tanggal Akhir</label>
                             <div class="col-sm-4">
-                                <input type="date" class="form-control" id="tanggal_akhir" name="tanggal_akhir" value="{{ $endDate }}" required>
+                                <input type="date" class="form-control" id="tanggal_akhir" name="tanggal_akhir" value="{{ $endDate }}">
                             </div>
                         </div>
+
                         <div class="form-group row">
                             <div class="col-sm-12">
-                                <button type="submit" class="btn btn-info mr-2">Tampilkan Grafik</button>
+                                <button type="submit" class="btn btn-info mr-2">Tampilkan Laporan</button>
                                 <button type="submit" class="btn btn-primary mr-2" formaction="{{ url('/generate-pdf') }}">Generate PDF</button>
                                 <button type="submit" class="btn btn-success" formaction="{{ url('/generate-excel') }}">Generate Excel</button>
                             </div>
@@ -149,6 +164,33 @@
 @endsection
 
 @section('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Toggle Custom Date Range based on Period selection
+        const periodSelect = document.getElementById('period');
+        const customDateRange = document.getElementById('customDateRange');
+        const startDateInput = document.getElementById('tanggal_awal');
+        const endDateInput = document.getElementById('tanggal_akhir');
+
+        if (periodSelect) {
+            function toggleCustomDate() {
+                if (periodSelect.value === 'custom') {
+                    customDateRange.style.display = 'flex';
+                    startDateInput.required = true;
+                    endDateInput.required = true;
+                } else {
+                    customDateRange.style.display = 'none';
+                    startDateInput.required = false;
+                    endDateInput.required = false;
+                }
+            }
+
+            periodSelect.addEventListener('change', toggleCustomDate);
+            toggleCustomDate(); // Run on load
+        }
+    });
+</script>
+
 @if($startDate && $endDate)
 <script>
     // Set new default font family and font color to mimic Bootstrap's default styling
