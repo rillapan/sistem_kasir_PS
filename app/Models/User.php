@@ -21,7 +21,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'status'
+        'role',
+        'shift'
     ];
 
     /**
@@ -51,5 +52,40 @@ class User extends Authenticatable
     public function member()
     {
         return $this->hasOne(Member::class);
+    }
+
+    /**
+     * Check if user is admin
+     */
+    public function isAdmin()
+    {
+        return $this->role === 'admin';
+    }
+
+    /**
+     * Check if user is owner
+     */
+    public function isOwner()
+    {
+        return $this->role === 'owner';
+    }
+
+    /**
+     * Check if user is kasir
+     */
+    public function isKasir()
+    {
+        return $this->role === 'kasir';
+    }
+
+    /**
+     * Check if user has role
+     */
+    public function hasRole($role)
+    {
+        if (is_array($role)) {
+            return in_array($this->role, $role);
+        }
+        return $this->role === $role;
     }
 }

@@ -71,6 +71,14 @@ class HomeController extends Controller
                 ->where('payment_method', 'transfer_bank')
                 ->sum('total'),
         ];
+        
+        // Calculate revenue per user (kasir/shift) for today
+        $todayRevenuePerUser = Transaction::selectRaw('users.name, users.role, SUM(total) as revenue')
+            ->join('users', 'users.id', '=', 'transactions.user_id')
+            ->whereDate('transactions.created_at', today())
+            ->where('transactions.payment_status', 'paid')
+            ->groupBy('users.id', 'users.name', 'users.role')
+            ->get();
             
         return view('home', [
             'title' => 'Dashboard',
@@ -82,6 +90,7 @@ class HomeController extends Controller
             'today_pendapatan' => $todayRevenue,
             'todayPaymentMethodCounts' => $todayPaymentMethodCounts,
             'todayPaymentMethodTotals' => $todayPaymentMethodTotals,
+            'todayRevenuePerUser' => $todayRevenuePerUser,
         ]);
     }
 

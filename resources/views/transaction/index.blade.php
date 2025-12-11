@@ -115,7 +115,7 @@
                 </div>
                 
                 <div class="d-flex align-items-center">
-                    @if (auth()->user()->status === 'admin')
+                    @if (auth()->user()->isAdmin() || auth()->user()->isKasir())
                         <a href="{{ route('transaction.create') }}" class="btn btn-primary btn-sm">
                             <i class="fas fa-plus"></i> Tambah Data Pesanan
                         </a>
@@ -145,7 +145,7 @@
                         <th scope="col">Status Pembayaran</th>
                        
 
-                        @if (auth()->user()->status === 'admin')
+                        @if (auth()->user()->isAdmin() || auth()->user()->isKasir())
                             <th scope="col">Action</th>
                         @endif
                     </tr>
@@ -229,7 +229,7 @@
                             </td>
 
 
-                            @if (auth()->user()->status === 'admin' && $transaksi->device)
+                            @if ((auth()->user()->isAdmin() || auth()->user()->isKasir()) && $transaksi->device)
                                 <td>
                                     <div class="btn-group" role="group" aria-label="Action Buttons">
                                         <a href="{{ route('transaction.show', ['transaction' => $transaksi->id_transaksi]) }}" class="btn btn-info btn-sm" title="Detail">

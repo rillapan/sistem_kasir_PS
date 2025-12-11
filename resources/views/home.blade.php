@@ -351,6 +351,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 
                 <hr>
+
+                <!-- Revenue Per User Section -->
+                @if(isset($todayRevenuePerUser) && $todayRevenuePerUser->count() > 0)
+                <div class="revenue-per-user-details mb-4">
+                    <h6 class="text-muted mb-3 font-weight-bold">Pendapatan Per Kasir:</h6>
+                    <div class="list-group">
+                        @foreach($todayRevenuePerUser as $userRevenue)
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="font-weight-bold">{{ $userRevenue->name }}</span>
+                                <small class="text-muted d-block">
+                                    {{ ucfirst($userRevenue->role) }}
+                                </small>
+                            </div>
+                            <span class="badge badge-success badge-pill" style="font-size: 1rem;">
+                                Rp {{ number_format($userRevenue->revenue, 0, ',', '.') }}
+                            </span>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                <hr>
+                @endif
                 
                 <div class="payment-method-details">
                     <h6 class="text-muted mb-3">Jenis Pembayaran:</h6>
