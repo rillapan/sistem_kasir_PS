@@ -109,9 +109,9 @@
     </div>
 
     <div class="header">
-        <h3>Rental PS Wiradesa</h3>
-        <p>Jl. Raya Wiradesa No. 123</p>
-        <p>Telp: 0812-3456-7890</p>
+        <h3>Sugeng Rawuh Playstation & Billiard</h3>
+        <p>Kemplong Barat, Kemplong, Kec. Wiradesa, Kabupaten Pekalongan, Jawa Tengah</p>
+        <p>Telp: +62 857-2505-6741</p>
     </div>
 
     <div class="divider"></div>

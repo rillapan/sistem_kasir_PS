@@ -265,8 +265,8 @@
         const fnbs = @json($fnbs);
         const devices = @json($devices);
 
-        member.style.display = "none";
-        nama.style.display = "none";
+        // if (member) member.style.display = "none";
+        if (nama) nama.style.display = "block";
         console.log(d.getHours() + " : " + d.getMinutes());
 
         document.getElementById('waktu_mulai').value =
@@ -364,16 +364,19 @@
         }
 
         function showInput() {
-            const status = document.getElementById('status').value;
+            const statusEl = document.getElementById('status');
             const nama = document.getElementById('nama');
             const member = document.getElementById('member');
 
+            if (!statusEl) return;
+            const status = statusEl.value;
+
             if (status === 'member') {
-                member.style.display = "block";
-                nama.style.display = "none";
+                if (member) member.style.display = "block";
+                if (nama) nama.style.display = "none";
             } else {
-                member.style.display = "none";
-                nama.style.display = "block";
+                if (member) member.style.display = "none";
+                if (nama) nama.style.display = "block";
             }
         }
 
@@ -473,12 +476,13 @@
             priceInput.value = selectedOption.getAttribute('data-price') || 0;
             
             // Show/hide unlimited info and remove max limit for qty
+            // Show/hide unlimited info and remove max limit for qty
             if (stock === -1) {
-                stockInfo.style.display = 'block';
+                if (stockInfo) stockInfo.style.display = 'block';
                 qtyInput.removeAttribute('max');
                 qtyInput.setAttribute('title', 'Stok unlimited - bisa dipesan tanpa batasan');
             } else {
-                stockInfo.style.display = 'none';
+                if (stockInfo) stockInfo.style.display = 'none';
                 qtyInput.setAttribute('max', stock);
                 qtyInput.removeAttribute('title');
             }
