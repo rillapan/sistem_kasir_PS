@@ -193,6 +193,7 @@
                                 <th>Jumlah</th>
                                 <th>Harga Satuan</th>
                                 <th>Total</th>
+                                <th>Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -202,6 +203,23 @@
                                     <td>{{ $fnbItem->qty }}</td>
                                     <td>Rp {{ number_format($fnbItem->harga_jual, 0, ',', '.') }}</td>
                                     <td>Rp {{ number_format($fnbItem->qty * $fnbItem->harga_jual, 0, ',', '.') }}</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" 
+                                            data-bs-target="#editFnbModal" 
+                                            data-id="{{ $fnbItem->id }}"
+                                            data-name="{{ $fnbItem->fnb->nama }}"
+                                            data-qty="{{ $fnbItem->qty }}"
+                                            data-stock="{{ $fnbItem->fnb->stok }}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <form action="{{ route('transaction.delete-fnb', $fnbItem->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus item ini?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>

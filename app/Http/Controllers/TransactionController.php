@@ -116,7 +116,7 @@ class TransactionController extends Controller
 
         $query = Transaction::with('transactionFnbs');
 
-        if (auth()->user()->status !== 'admin') {
+        if (!in_array(auth()->user()->role, ['admin', 'kasir'])) {
             $query->where('user_id', auth()->user()->id);
         }
 
@@ -644,7 +644,7 @@ class TransactionController extends Controller
     {
         $transaction = Transaction::findOrFail($id);
 
-        if (auth()->user()->status !== 'admin' && $transaction->user_id !== auth()->id()) {
+        if (!in_array(auth()->user()->role, ['admin', 'kasir']) && $transaction->user_id !== auth()->id()) {
             abort(403, 'Unauthorized');
         }
 
@@ -683,9 +683,17 @@ class TransactionController extends Controller
             ];
         } else {
             // For prepaid transactions, just update the end time and status
+            // Calculate correct PS total based on type
+            if ($transaction->tipe_transaksi === 'prepaid') {
+                $totalPs = $transaction->harga * ($transaction->jam_main ?? 0);
+            } else {
+                // For custom_package, transaction->harga is already the total package price
+                $totalPs = $transaction->harga;
+            }
+
             $updateData = [
                 'waktu_Selesai' => $waktuSelesai->format('H:i'),
-                'total' => $transaction->harga + $totalFnb,
+                'total' => $totalPs + $totalFnb,
             ];
         }
 
@@ -722,7 +730,32 @@ class TransactionController extends Controller
 
         // Calculate existing total (PS cost + existing FNB cost)
         $existingFnbTotal = $transaction->getFnbTotalAttribute();
-        $existingTotal = $transaction->harga + $existingFnbTotal;
+        // Calculate existing PS cost based on transaction type
+        $totalPs = 0;
+        if ($transaction->tipe_transaksi === 'prepaid') {
+            $totalPs = $transaction->harga * ($transaction->jam_main ?? 0);
+        } elseif ($transaction->tipe_transaksi === 'custom_package') {
+            $totalPs = $transaction->harga;
+        } elseif ($transaction->tipe_transaksi === 'postpaid') {
+            // For running lost time, calculate current cost
+            $startTimestamp = $transaction->lost_time_start 
+                ? Carbon::parse($transaction->lost_time_start)
+                : Carbon::parse($transaction->created_at->toDateString() . ' ' . $transaction->waktu_mulai);
+            
+            $now = Carbon::now();
+            $durationMinutes = $startTimestamp->diffInMinutes($now, false);
+            
+            if ($durationMinutes < 0) {
+                 // Fallback if start is future or wrong
+                 $durationMinutes = 0;
+            }
+            
+            $costPerMinute = $transaction->harga / 60;
+            $rawTotalPs = $durationMinutes * $costPerMinute;
+            $totalPs = $this->applyLostTimeRounding($rawTotalPs);
+        }
+
+        $existingTotal = $totalPs + $existingFnbTotal;
 
         return view('transaction.add-order', [
             'title' => 'Tambah Pesanan',
@@ -804,9 +837,33 @@ class TransactionController extends Controller
             ->selectRaw('SUM(qty * harga_jual) as total')
             ->value('total') ?? 0;
 
-        $transaction->total = $transaction->harga + $fnbTotal;
-        $transaction->save();
+        $totalPs = 0;
+        
+        if ($transaction->tipe_transaksi === 'prepaid') {
+            $totalPs = $transaction->harga * ($transaction->jam_main ?? 0);
+        } elseif ($transaction->tipe_transaksi === 'custom_package') {
+            $totalPs = $transaction->harga;
+        } elseif ($transaction->tipe_transaksi === 'postpaid') {
+            if ($transaction->status_transaksi === 'selesai' && $transaction->waktu_Selesai) {
+                $waktuMulai = Carbon::parse($transaction->created_at->toDateString() . ' ' . $transaction->waktu_mulai);
+                $waktuSelesai = Carbon::parse($transaction->created_at->toDateString() . ' ' . $transaction->waktu_Selesai);
+                
+                $durationMinutes = $waktuMulai->diffInMinutes($waktuSelesai, false);
+                if ($durationMinutes < 0) {
+                    $durationMinutes += 24 * 60;
+                }
+                
+                $costPerMinute = $transaction->harga / 60;
+                $rawTotalPs = $durationMinutes * $costPerMinute;
+                $totalPs = $this->applyLostTimeRounding($rawTotalPs);
+            } else {
+                $totalPs = 0;
+            }
+        }
 
+        $transaction->total = $totalPs + $fnbTotal;
+        $transaction->save();
+        
         return redirect()->route('transaction.showPayment', $transaction->id_transaksi)
             ->with('success', $totalAdded . ' item pesanan berhasil ditambahkan');
     }
