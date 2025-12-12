@@ -123,7 +123,13 @@
                                 @endif
                                 <tr>
                                     <td><strong>Biaya Playstation:</strong></td>
-                                    <td>Rp {{ number_format($transaction->total - $transaction->getFnbTotalAttribute(), 0, ',', '.') }}</td>
+                                    <td>
+                                        @if($transaction->tipe_transaksi === 'custom_package')
+                                            <span class="badge badge-info">Harga Paket</span>
+                                        @else
+                                            Rp {{ number_format($transaction->total - $transaction->getFnbTotalAttribute(), 0, ',', '.') }}
+                                        @endif
+                                    </td>
                                 </tr>
                                 <tr>
                                     <td><strong>Biaya FnB:</strong></td>
@@ -163,12 +169,44 @@
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    @php
+                                        // Create lookup for package items if custom package
+                                        $packageItems = [];
+                                        if($transaction->tipe_transaksi === 'custom_package' && $transaction->custom_package) {
+                                            foreach($transaction->custom_package->fnbs as $pFnb) {
+                                                $packageItems[$pFnb->id] = $pFnb->pivot->quantity;
+                                            }
+                                        }
+                                    @endphp
+
                                     @foreach($transaction->transactionFnbs as $fnbItem)
+                                        @php
+                                            $qtyInPackage = $packageItems[$fnbItem->fnb_id] ?? 0;
+                                            $isPackageItem = $qtyInPackage > 0;
+                                            $displayTotal = '';
+                                            
+                                            if ($isPackageItem) {
+                                                if ($fnbItem->qty <= $qtyInPackage) {
+                                                    $displayTotal = '<span class="badge badge-info">harga paket</span>';
+                                                } else {
+                                                    $paidQty = $fnbItem->qty - $qtyInPackage;
+                                                    $paidTotal = $paidQty * $fnbItem->harga_jual;
+                                                    $displayTotal = 'Rp ' . number_format($paidTotal, 0, ',', '.') . ' <br><small class="text-muted">(' . $paidQty . ' tambahan berbayar)</small>';
+                                                }
+                                            } else {
+                                                $displayTotal = 'Rp ' . number_format($fnbItem->qty * $fnbItem->harga_jual, 0, ',', '.');
+                                            }
+                                        @endphp
                                         <tr>
-                                            <td>{{ $fnbItem->fnb->nama }}</td>
+                                            <td>
+                                                {{ $fnbItem->fnb->nama }}
+                                                @if($isPackageItem)
+                                                    <span class="badge badge-secondary ml-1" style="font-size: 0.7em;">Paket</span>
+                                                @endif
+                                            </td>
                                             <td>{{ $fnbItem->qty }}</td>
                                             <td>Rp {{ number_format($fnbItem->harga_jual, 0, ',', '.') }}</td>
-                                            <td>Rp {{ number_format($fnbItem->qty * $fnbItem->harga_jual, 0, ',', '.') }}</td>
+                                            <td>{!! $displayTotal !!}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>

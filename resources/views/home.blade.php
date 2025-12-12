@@ -128,7 +128,7 @@
            
         </div>
     </div>
-@push('scripts')
+@section('scripts')
 <!-- Page level plugins -->
 <script src="vendor/chart.js/Chart.min.js"></script>
 
@@ -331,10 +331,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
+
+        // Real-time update function for Hourly Revenue
+        setInterval(function() {
+            fetch('{{ url("/hourly-revenue-data") }}')
+                .then(response => response.json())
+                .then(data => {
+                    myAreaChart.data = data;
+                    myAreaChart.update();
+                })
+                .catch(error => console.error('Error fetching realtime chart data:', error));
+        }, 5000); // 5 seconds polling
     }
 });
 </script>
-@endpush
+@endsection
 
 <!-- Today's Revenue Detail Modal -->
 <div class="modal fade" id="todayRevenueDetailModal" tabindex="-1" aria-labelledby="todayRevenueDetailModalLabel" aria-hidden="true">

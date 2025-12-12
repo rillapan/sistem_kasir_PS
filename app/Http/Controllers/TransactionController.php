@@ -729,7 +729,27 @@ class TransactionController extends Controller
         })->get();
 
         // Calculate existing total (PS cost + existing FNB cost)
-        $existingFnbTotal = $transaction->getFnbTotalAttribute();
+        $existingFnbTotal = 0;
+        
+        if ($transaction->tipe_transaksi === 'custom_package' && $transaction->custom_package) {
+            // For custom package, we need to calculate only the paid extra FnB
+            $transaction->load('custom_package.fnbs');
+            $packageItems = [];
+            foreach($transaction->custom_package->fnbs as $pFnb) {
+                $packageItems[$pFnb->id] = $pFnb->pivot->quantity;
+            }
+            
+            foreach($transaction->transactionFnbs as $fnbItem) {
+                $qtyInPackage = $packageItems[$fnbItem->fnb_id] ?? 0;
+                if ($fnbItem->qty > $qtyInPackage) {
+                    $paidQty = $fnbItem->qty - $qtyInPackage;
+                    $existingFnbTotal += $paidQty * $fnbItem->harga_jual;
+                }
+            }
+        } else {
+            $existingFnbTotal = $transaction->getFnbTotalAttribute();
+        }
+
         // Calculate existing PS cost based on transaction type
         $totalPs = 0;
         if ($transaction->tipe_transaksi === 'prepaid') {
@@ -833,9 +853,32 @@ class TransactionController extends Controller
         }
 
         // Recalculate the total for the transaction (PS cost + FNB total)
-        $fnbTotal = TransactionFnb::where('transaction_id', $transaction->id_transaksi)
-            ->selectRaw('SUM(qty * harga_jual) as total')
-            ->value('total') ?? 0;
+        $fnbTotal = 0;
+        
+        if ($transaction->tipe_transaksi === 'custom_package' && $transaction->custom_package) {
+            // For custom package, we need to calculate only the paid extra FnB
+            $transaction->load('custom_package.fnbs');
+            $packageItems = [];
+            foreach($transaction->custom_package->fnbs as $pFnb) {
+                $packageItems[$pFnb->id] = $pFnb->pivot->quantity;
+            }
+            
+            // Retrieve refreshed transaction FnBs
+            $currentFnbs = TransactionFnb::where('transaction_id', $transaction->id_transaksi)->get();
+            
+            foreach($currentFnbs as $fnbItem) {
+                $qtyInPackage = $packageItems[$fnbItem->fnb_id] ?? 0;
+                if ($fnbItem->qty > $qtyInPackage) {
+                    $paidQty = $fnbItem->qty - $qtyInPackage;
+                    $fnbTotal += $paidQty * $fnbItem->harga_jual;
+                }
+            }
+        } else {
+            // For normal transactions, sum all FnB costs
+            $fnbTotal = TransactionFnb::where('transaction_id', $transaction->id_transaksi)
+                ->selectRaw('SUM(qty * harga_jual) as total')
+                ->value('total') ?? 0;
+        }
 
         $totalPs = 0;
         
