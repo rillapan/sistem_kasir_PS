@@ -147,9 +147,10 @@
                     <!-- Row 3: Harga and Jam Mulai -->
                     <div class="row mb-2">
                         <div class="col-md-6">
-                            <label for="harga" class="form-label small">Harga per Jam</label>
+                            <label for="harga" class="form-label small">Harga dasar</label>
                             <input type="number" class="form-control @error('harga') is-invalid @enderror" id="harga"
                                 name="harga" required readonly value="{{ old('harga') }}">
+                            <small class="text-muted">Harga dasar dari PlayStation</small>
                             @error('harga')
                                 <div class="invalid-feedback">
                                     {{ $message }}
@@ -158,8 +159,19 @@
                         </div>
                         <div class="col-md-6">
                             <label for="jam_main" class="form-label small">Jam Main</label>
-                            <input type="number" class="form-control @error('jam_main') is-invalid @enderror" id="jam_main"
-                                name="jam_main" autofocus value="{{ old('jam_main') }}" onchange="showChangeMaster()" min="1" max="24">
+                            <div class="row g-2">
+                                <div class="col-12">
+                                    <select class="form-control @error('jam_main') is-invalid @enderror" id="jam_main_select" name="jam_main_select" onchange="handleJamMainChange()">
+                                        <option value="">Pilih jam yang tersedia</option>
+                                        <option value="custom">Custom (input manual)</option>
+                                    </select>
+                                </div>
+                                <div class="col-12" id="custom_jam_main_container" style="display: none;">
+                                    <input type="number" class="form-control @error('jam_main') is-invalid @enderror" id="jam_main"
+                                        name="jam_main" value="{{ old('jam_main') }}" oninput="showTotal()" onchange="handleJamMainChange()" min="1" max="24" placeholder="Masukkan jumlah jam">
+                                    <small class="text-muted">Harga mengikuti harga dasar PlayStation</small>
+                                </div>
+                            </div>
                             @error('jam_main')
                                 <div class="invalid-feedback">
                                     {{ $message }}
@@ -340,6 +352,8 @@
                 deviceHelpText.textContent = 'Pilih paket terlebih dahulu, lalu pilih perangkat';
                 // Clear form fields
                 document.getElementById('jam_main').value = '';
+                document.getElementById('jam_main_select').value = '';
+                document.getElementById('custom_jam_main_container').style.display = 'none';
                 document.getElementById('waktu_Selesai').value = '';
                 document.getElementById('total_ps').value = '';
                 document.getElementById('harga').value = '';
@@ -404,7 +418,7 @@
 
         function showChangeMaster() {
             showTime();
-            showTotal();
+            // showTotal() is now called from handleJamMainChange() when needed
         }
 
         function showInput() {
@@ -428,15 +442,20 @@
             const device = document.getElementById('device_id').value;
             const harga = document.getElementById('harga');
             const totalField = document.getElementById('total_ps');
-            const jamMain = parseFloat(document.getElementById('jam_main').value);
+            const jamMainSelect = document.getElementById('jam_main_select');
+            const jamMainInput = document.getElementById('jam_main');
+            const jamMain = parseFloat(jamMainInput.value);
 
             if (!device || device === "dummy") {
                 harga.value = '';
                 totalField.value = '';
+                jamMainSelect.innerHTML = '<option value="">Pilih jam yang tersedia</option><option value="custom">Custom (input manual)</option>';
                 return;
             }
 
             console.log(device);
+            
+            // Get base price first
             axios.get('/api/get-harga', {
                     params: {
                         device: device
@@ -445,10 +464,33 @@
                 .then(function(response) {
                     console.log(response.data);
                     harga.value = response.data.harga;
+                    
+                    // Load hourly prices
+                    return axios.get('/api/get-hourly-prices', {
+                        params: {
+                            device: device
+                        }
+                    });
+                })
+                .then(function(hourlyResponse) {
+                    console.log('Hourly prices:', hourlyResponse.data);
+                    const prices = hourlyResponse.data.prices || {};
+                    
+                    // Update jam main select with hourly prices
+                    jamMainSelect.innerHTML = '<option value="">Pilih jam yang tersedia</option>';
+                    
+                    Object.keys(prices).sort((a, b) => parseInt(a) - parseInt(b)).forEach(hour => {
+                        const option = document.createElement('option');
+                        option.value = hour;
+                        option.textContent = `${hour} jam - Rp ${new Intl.NumberFormat('id-ID').format(prices[hour])}`;
+                        jamMainSelect.appendChild(option);
+                    });
+                    
+                    jamMainSelect.innerHTML += '<option value="custom">Custom (input manual)</option>';
+                    
+                    // Calculate total if jam main is selected
                     if (!isNaN(jamMain) && jamMain > 0) {
-                        const total = parseFloat(harga.value) * jamMain;
-                        totalField.value = total;
-                        updateGrandTotal();
+                        showTotal(); // Use showTotal() to get correct pricing
                     } else {
                         totalField.value = '';
                     }
@@ -457,15 +499,124 @@
                     console.log(error);
                     harga.value = '';
                     totalField.value = '';
+                    jamMainSelect.innerHTML = '<option value="">Pilih jam yang tersedia</option><option value="custom">Custom (input manual)</option>';
                 });
+        }
+
+        function handleJamMainChange() {
+            const jamMainSelect = document.getElementById('jam_main_select');
+            const jamMainInput = document.getElementById('jam_main');
+            const customContainer = document.getElementById('custom_jam_main_container');
+            const harga = document.getElementById('harga');
+            const totalField = document.getElementById('total_ps');
+            
+            if (jamMainSelect.value === 'custom') {
+                // Show custom input
+                customContainer.style.display = 'block';
+                jamMainInput.setAttribute('required', 'required');
+                
+                // Use base price for custom - call showTotal() to handle calculation
+                showTotal();
+            } else if (jamMainSelect.value) {
+                // Hide custom input and use selected hourly price
+                customContainer.style.display = 'none';
+                jamMainInput.removeAttribute('required');
+                jamMainInput.value = jamMainSelect.value;
+                
+                // Get hourly price for selected hour
+                const device = document.getElementById('device_id').value;
+                if (device && device !== "dummy") {
+                    axios.get('/api/get-hourly-prices', {
+                        params: {
+                            device: device
+                        }
+                    })
+                    .then(function(response) {
+                        const prices = response.data.prices || {};
+                        const selectedHour = jamMainSelect.value;
+                        
+                        if (prices[selectedHour]) {
+                            // Use hourly price - this is the TOTAL price for the selected duration
+                            totalField.value = parseFloat(prices[selectedHour]);
+                            updateGrandTotal();
+                        } else {
+                            // Fallback to base price calculation
+                            const total = parseFloat(harga.value) * parseFloat(selectedHour);
+                            totalField.value = total;
+                            updateGrandTotal();
+                        }
+                    })
+                    .catch(function(error) {
+                        console.log(error);
+                        // Fallback to base price
+                        const total = parseFloat(harga.value) * parseFloat(jamMainSelect.value);
+                        totalField.value = total;
+                        updateGrandTotal();
+                    });
+                }
+            } else {
+                // Reset
+                customContainer.style.display = 'none';
+                jamMainInput.removeAttribute('required');
+                jamMainInput.value = '';
+                totalField.value = '';
+                updateGrandTotal();
+            }
+            
+            showChangeMaster();
         }
 
         function showTotal() {
             const harga = parseFloat(document.getElementById('harga').value);
-            const jamMain = parseFloat(document.getElementById('jam_main').value);
-            const total = harga * jamMain;
-            document.getElementById('total_ps').value = total;
-            updateGrandTotal();
+            const jamMainSelect = document.getElementById('jam_main_select');
+            const jamMainInput = document.getElementById('jam_main');
+            const totalField = document.getElementById('total_ps');
+            let jamMain = 0;
+            
+            if (jamMainSelect.value && jamMainSelect.value !== 'custom') {
+                jamMain = parseFloat(jamMainSelect.value);
+            } else if (jamMainInput.value) {
+                jamMain = parseFloat(jamMainInput.value);
+            }
+            
+            // If hourly price is selected, get the specific hourly price
+            if (jamMainSelect.value && jamMainSelect.value !== 'custom') {
+                const device = document.getElementById('device_id').value;
+                if (device && device !== "dummy") {
+                    axios.get('/api/get-hourly-prices', {
+                        params: {
+                            device: device
+                        }
+                    })
+                    .then(function(response) {
+                        const prices = response.data.prices || {};
+                        const selectedHour = jamMainSelect.value;
+                        
+                        if (prices[selectedHour]) {
+                            // Use hourly price - this is the TOTAL price for the selected duration
+                            totalField.value = parseFloat(prices[selectedHour]);
+                            updateGrandTotal();
+                        } else {
+                            // Fallback to base price calculation
+                            const total = harga * jamMain;
+                            totalField.value = total;
+                            updateGrandTotal();
+                        }
+                    })
+                    .catch(function(error) {
+                        console.log(error);
+                        // Fallback to base price calculation
+                        const total = harga * jamMain;
+                        totalField.value = total;
+                        updateGrandTotal();
+                    });
+                }
+            } else {
+                // Use base price for custom or no selection
+                const total = harga * jamMain;
+                totalField.value = total;
+                updateGrandTotal();
+            }
         }
 
         function addFnbItem() {
@@ -795,7 +946,16 @@
         function showTime() {
             const waktu_mulai = document.getElementById('waktu_mulai').value;
             const waktu_selesai = document.getElementById('waktu_Selesai');
-            const jam_main = document.getElementById('jam_main').value;
+            const jamMainSelect = document.getElementById('jam_main_select');
+            const jamMainInput = document.getElementById('jam_main');
+            let jam_main = 0;
+            
+            if (jamMainSelect.value && jamMainSelect.value !== 'custom') {
+                jam_main = jamMainSelect.value;
+            } else if (jamMainInput.value) {
+                jam_main = jamMainInput.value;
+            }
+            
             console.log(jam_main)
             const tanggal = new Date().toISOString().slice(0, 10);
             const date = new Date();

@@ -15,7 +15,7 @@ class PlayController extends Controller
      */
     public function index()
     {
-        $play = Playstation::paginate(5);
+        $play = Playstation::paginate(10);
         return view('playstation.index', [
             'title' => 'Jenis Playstation',
             'active' => 'play',

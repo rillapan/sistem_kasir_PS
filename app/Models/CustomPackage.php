@@ -15,6 +15,7 @@ class CustomPackage extends Model
         'nama_paket',
         'harga_total',
         'deskripsi',
+        'price_group_id',
         'is_active',
     ];
 
@@ -35,6 +36,25 @@ class CustomPackage extends Model
         return $this->belongsToMany(Fnb::class, 'custom_package_fnb')
             ->withPivot('quantity')
             ->withTimestamps();
+    }
+
+    public function priceGroup()
+    {
+        return $this->belongsTo(PriceGroup::class);
+    }
+
+    /**
+     * Get FnB items filtered by the package's price group
+     *
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getAvailableFnbs()
+    {
+        if ($this->price_group_id) {
+            return Fnb::where('price_group_id', $this->price_group_id)->get();
+        }
+        
+        return Fnb::all();
     }
 
     public function scopeActive($query)

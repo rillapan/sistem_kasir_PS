@@ -5,13 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\CustomPackage;
 use App\Models\Playstation;
 use App\Models\Fnb;
+use App\Models\PriceGroup;
 use Illuminate\Http\Request;
 
 class CustomPackageController extends Controller
 {
     public function index()
     {
-        $packages = CustomPackage::with(['playstations', 'fnbs'])->get();
+        $packages = CustomPackage::with(['playstations', 'fnbs', 'priceGroup'])->get();
         return view('custom-package.index', [
             'title' => 'Custom Paket',
             'active' => 'custom-package',
@@ -23,11 +24,13 @@ class CustomPackageController extends Controller
     {
         $playstations = Playstation::all();
         $fnbs = Fnb::all();
+        $priceGroups = \App\Models\PriceGroup::all();
         return view('custom-package.create', [
             'title' => 'Tambah Custom Paket',
             'active' => 'custom-package',
             'playstations' => $playstations,
-            'fnbs' => $fnbs
+            'fnbs' => $fnbs,
+            'priceGroups' => $priceGroups
         ]);
     }
 
@@ -37,6 +40,7 @@ class CustomPackageController extends Controller
             'nama_paket' => 'required|string|max:255',
             'harga_total' => 'required|numeric|min:0',
             'deskripsi' => 'nullable|string',
+            'price_group_id' => 'nullable|exists:price_groups,id',
             'playstations' => 'required|array|min:1',
             'playstations.*.id' => 'required|exists:playstations,id',
             'playstations.*.lama_main' => 'required|integer|min:1',
@@ -49,6 +53,7 @@ class CustomPackageController extends Controller
             'nama_paket' => $request->nama_paket,
             'harga_total' => $request->harga_total,
             'deskripsi' => $request->deskripsi,
+            'price_group_id' => $request->price_group_id,
             'is_active' => true,
         ]);
 
@@ -90,15 +95,17 @@ class CustomPackageController extends Controller
 
     public function edit($id)
     {
-        $package = CustomPackage::with(['playstations', 'fnbs'])->findOrFail($id);
+        $package = CustomPackage::with(['playstations', 'fnbs', 'priceGroup'])->findOrFail($id);
         $playstations = Playstation::all();
         $fnbs = Fnb::all();
+        $priceGroups = \App\Models\PriceGroup::all();
         return view('custom-package.edit', [
             'title' => 'Edit Custom Paket',
             'active' => 'custom-package',
             'package' => $package,
             'playstations' => $playstations,
-            'fnbs' => $fnbs
+            'fnbs' => $fnbs,
+            'priceGroups' => $priceGroups
         ]);
     }
 

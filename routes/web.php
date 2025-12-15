@@ -89,6 +89,11 @@ Route::middleware(['auth', 'check_role:admin'])->group(function () {
     Route::resource('/fnb', App\Http\Controllers\FnbController::class);
     Route::resource('/price-group', App\Http\Controllers\PriceGroupController::class);
     Route::get('/price-group/{id}/fnbs', [App\Http\Controllers\PriceGroupController::class, 'showFnbs'])->name('price-group.fnbs');
+
+    // Hourly Prices for PlayStation
+    Route::prefix('/playstation/{playstationId}')->name('hourly-prices.')->group(function () {
+        Route::resource('/hourly-prices', 'App\Http\Controllers\HourlyPriceController');
+    });
     
     // Stock
     Route::get('/stock', [App\Http\Controllers\StockController::class, 'index'])->name('stock.index');

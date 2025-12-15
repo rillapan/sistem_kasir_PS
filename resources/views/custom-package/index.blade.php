@@ -39,7 +39,7 @@
                         <th scope="col">Nama Paket</th>
                         <th scope="col">Harga Total</th>
                         <th scope="col">Jenis PlayStation</th>
-                        <th scope="col">F&B</th>
+                        <th scope="col">Kelompok Harga & F&B</th>
                         <th scope="col">Status</th>
                         <th scope="col">Action</th>
                     </tr>
@@ -55,9 +55,25 @@
                                 @endforeach
                             </td>
                             <td>
-                                @foreach ($package->fnbs as $fnb)
-                                    <span class="badge badge-success">{{ $fnb->nama }} x{{ $fnb->pivot->quantity }}</span><br>
-                                @endforeach
+                                @if($package->priceGroup)
+                                    <strong>Kelompok: {{ $package->priceGroup->nama }}</strong><br>
+                                    @if($package->fnbs->count() > 0)
+                                        @foreach ($package->fnbs as $fnb)
+                                            <span class="badge badge-success">{{ $fnb->nama }} x{{ $fnb->pivot->quantity }}</span><br>
+                                        @endforeach
+                                    @else
+                                        <em>Tidak ada F&B</em>
+                                    @endif
+                                @else
+                                    <em>Tidak ada kelompok harga</em><br>
+                                    @if($package->fnbs->count() > 0)
+                                        @foreach ($package->fnbs as $fnb)
+                                            <span class="badge badge-success">{{ $fnb->nama }} x{{ $fnb->pivot->quantity }}</span><br>
+                                        @endforeach
+                                    @else
+                                        <em>Tidak ada F&B</em>
+                                    @endif
+                                @endif
                             </td>
                             <td>
                                 @if ($package->is_active)

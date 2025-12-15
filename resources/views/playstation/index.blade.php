@@ -54,6 +54,9 @@
                                 <a href="{{ route('device.byPlaystation', $play->id) }}" class="btn btn-sm btn-primary mr-1" title="View Devices">
                                     <i class="fas fa-tv"></i>
                                 </a>
+                                <a href="{{ route('hourly-prices.hourly-prices.index', $play->id) }}" class="btn btn-sm btn-success mr-1" title="Manage Hourly Prices">
+                                    <i class="fas fa-clock"></i>
+                                </a>
                                 <form action="/playstation/{{ $play->id }}" method="post" class="d-inline">
                                     @method('delete')
                                     @csrf

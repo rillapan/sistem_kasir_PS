@@ -209,7 +209,7 @@ class TransactionController extends Controller
         $noDevices = $device->isEmpty();
         $playstation = Playstation::all();
         $fnbs = Fnb::all();
-        $customPackages = CustomPackage::active()->with(['playstations', 'fnbs'])->get();
+        $customPackages = CustomPackage::active()->with(['playstations', 'fnbs', 'priceGroup'])->get();
 
         $now = Carbon::now();
         $currentTime = $now->format('H:i');
@@ -270,6 +270,7 @@ class TransactionController extends Controller
             'user_id' => 'nullable|exists:users,id',
             'harga' => 'required_if:tipe_transaksi,prepaid,custom_package|nullable',
             'jam_main' => 'required_if:tipe_transaksi,prepaid|nullable|max:2',
+            'jam_main_select' => 'nullable|string',
             'total' => 'required',
             'status_transaksi' => 'nullable',
             'tipe_transaksi' => 'required|in:prepaid,postpaid,custom_package',
@@ -281,6 +282,13 @@ class TransactionController extends Controller
         $validatedData['status'] = 'user'; // Provide default value for status
         $validatedData['waktu_mulai'] = $start_time;
         $validatedData['tipe_transaksi'] = $request->tipe_transaksi;
+        
+        // Handle jam_main from select or input
+        if ($request->jam_main_select && $request->jam_main_select !== 'custom') {
+            $jam_main = $request->jam_main_select;
+        } else {
+            $jam_main = $request->jam_main;
+        }
 
         if ($request->tipe_transaksi === 'custom_package') {
             $customPackage = CustomPackage::with(['playstations', 'fnbs'])->findOrFail($request->custom_package_id);
@@ -314,9 +322,34 @@ class TransactionController extends Controller
             $validatedData['waktu_Selesai'] = Carbon::parse($start_time)->addMinutes($totalJamMain)->format('H:i');
 
         } elseif ($request->tipe_transaksi === 'prepaid') {
+            // Check if there are custom hourly prices for this PlayStation
+            $device = Device::findOrFail($request->device_id);
+            $playstation = $device->playstation;
+            $hourlyPrice = $playstation->getPriceForHour($jam_main);
+
+            if ($hourlyPrice !== null) {
+                // Use custom hourly pricing
+                $totalPs = $hourlyPrice;
+            } else {
+                // Fallback to standard pricing
+                $totalPs = ($playstation->harga ?? 0) * $jam_main;
+            }
+
+            $fnbTotal = 0;
+            if ($request->has('fnb_ids')) {
+                foreach ($request->fnb_ids as $index => $fnb_id) {
+                    if ($fnb_id && isset($request->fnbs_qty[$index]) && $request->fnbs_qty[$index] > 0) {
+                        $fnb = Fnb::findOrFail($fnb_id);
+                        $harga_jual = $request->fnbs_harga[$index] ?? $fnb->harga_jual;
+                        $fnbTotal += $request->fnbs_qty[$index] * $harga_jual;
+                    }
+                }
+            }
+
             $validatedData['waktu_Selesai'] = $end_time;
             $validatedData['jam_main'] = $jam_main;
-            $validatedData['total'] = $request->total;
+            $validatedData['harga'] = $playstation->harga ?? 0; // Store base hourly rate for reference
+            $validatedData['total'] = $totalPs + $fnbTotal;
             $validatedData['status_transaksi'] = 'sukses';
         } elseif ($request->tipe_transaksi === 'postpaid') {
             // Postpaid (Lost Time) - device is now required
@@ -550,25 +583,37 @@ class TransactionController extends Controller
         } elseif ($newTipeTransaksi === 'prepaid') {
             // Changed to Paket OR updating existing Paket
             $jamMain = $validatedData['jam_main'] ?? 1;
-            $hargaPerJam = $newDevice->playstation->harga ?? 0;
-            $totalPs = $hargaPerJam * $jamMain;
+
+            // Check if there are custom hourly prices for this PlayStation
+            $playstation = $newDevice->playstation;
+            $hourlyPrice = $playstation->getPriceForHour($jamMain);
+
+            if ($hourlyPrice !== null) {
+                // Use custom hourly pricing
+                $totalPs = $hourlyPrice;
+            } else {
+                // Fallback to standard pricing
+                $hargaPerJam = $playstation->harga ?? 0;
+                $totalPs = $hargaPerJam * $jamMain;
+            }
+
             $fnbTotal = $transaction->getFnbTotalAttribute();
-            
+
             $updateData['jam_main'] = $jamMain;
-            $updateData['harga'] = $hargaPerJam;
+            $updateData['harga'] = $playstation->harga ?? 0; // Store base hourly rate for reference
             $updateData['total'] = $totalPs + $fnbTotal;
             $updateData['status_transaksi'] = 'sukses';
-            
+
             // Calculate elapsed time from waktu_mulai
             $waktuMulaiCarbon = Carbon::parse($transaction->created_at->toDateString() . ' ' . $transaction->waktu_mulai);
             $now = Carbon::now();
             $elapsedMinutes = $waktuMulaiCarbon->diffInMinutes($now);
-            
+
             // Calculate new end time: now + (jam_main in minutes - elapsed minutes)
             // This makes the timer show remaining time (countdown)
             $jamMainMinutes = $jamMain * 60;
             $remainingMinutes = $jamMainMinutes - $elapsedMinutes;
-            
+
             if ($remainingMinutes > 0) {
                 // There's still time remaining
                 $updateData['waktu_Selesai'] = $now->copy()->addMinutes($remainingMinutes)->format('H:i');
@@ -663,6 +708,45 @@ class TransactionController extends Controller
         }
 
         return response()->json(['harga' => $harga->harga]);
+    }
+
+    public function getHourlyPrices(Request $request)
+    {
+        $device = $request->query('device');
+
+        $devices = Device::find($device);
+        if (!$devices) {
+            return response()->json(['prices' => []]);
+        }
+
+        $playstation = Playstation::find($devices->playstation_id);
+        if (!$playstation) {
+            return response()->json(['prices' => []]);
+        }
+
+        $hourlyPrices = $playstation->getAvailableHoursWithPrices();
+
+        return response()->json(['prices' => $hourlyPrices]);
+    }
+
+    public function getFnbsByPriceGroup(Request $request)
+    {
+        $priceGroupId = $request->query('price_group_id');
+
+        if (!$priceGroupId) {
+            return response()->json(['fnbs' => []]);
+        }
+
+        $fnbs = Fnb::where('price_group_id', $priceGroupId)->get(['id', 'nama', 'harga_jual', 'stok']);
+
+        return response()->json(['fnbs' => $fnbs]);
+    }
+
+    public function getPriceGroups()
+    {
+        $priceGroups = \App\Models\PriceGroup::all(['id', 'nama', 'harga', 'deskripsi']);
+
+        return response()->json($priceGroups);
     }
 
     public function updateStatus(Request $request, $id)
