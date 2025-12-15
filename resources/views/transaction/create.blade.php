@@ -88,7 +88,7 @@
                     <!-- Row 2: Device -->
                     <div class="row mb-2" id="device-row">
                         <div class="col-md-12" id="device">
-                            <label for="device" class="form-label small">Nama Perangkat</label>
+                            <label for="device_id" class="form-label small">Nama Perangkat</label>
                             <select class="form-control" id="device_id" name="device_id" onchange="showPrice()" {{ $noDevices ? 'disabled' : '' }}>
                                 @if($noDevices)
                                     <option value="" selected>Semua perangkat sedang digunakan</option>
@@ -113,17 +113,6 @@
                     </div>
 
                    
-                    <!-- Row 2.5.5: Device Selection for Custom Package -->
-                    <div class="row mb-2" id="custom-package-device-row" style="display: none;">
-                        <div class="col-md-12">
-                            <label for="custom_package_device_id" class="form-label small">Pilih Perangkat</label>
-                            <select class="form-control" id="custom_package_device_id">
-                                <option value="" selected disabled hidden>Pilih perangkat yang tersedia</option>
-                            </select>
-                            <small class="text-muted">Hanya perangkat yang sesuai dengan jenis PlayStation dalam paket yang akan ditampilkan</small>
-                        </div>
-                    </div>
-
                     <!-- Row 2.6: Selected Custom Package Details -->
                     <div class="row mb-2" id="custom-package-details" style="display: none;">
                         <div class="col-md-12">
@@ -274,6 +263,52 @@
 
         // Always populate price on load for auto-selected device
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('=== DEBUGGING DEVICE DATA ===');
+            console.log('User role: @if(auth()->user()){{ auth()->user()->role }}@else guest @endif');
+            console.log('Devices data from server:', devices);
+            console.log('Number of devices:', devices.length);
+            console.log('Environment: {{ app()->environment() === 'local' ? 'LOCAL' : 'PRODUCTION' }}');
+            
+            // Check each device's status and playstation relationship
+            devices.forEach((device, index) => {
+                console.log(`Device ${index + 1}:`, {
+                    id: device.id,
+                    name: device.nama,
+                    status: device.status,
+                    playstation_id: device.playstation_id,
+                    hasPlaystation: !!device.playstation,
+                    playstationName: device.playstation ? device.playstation.nama : 'No playstation data'
+                });
+            });
+            
+            // Test custom package filtering
+            console.log('=== TESTING CUSTOM PACKAGE FILTERING ===');
+            const customPackages = @json($customPackages);
+            if (customPackages && customPackages.length > 0) {
+                const testPackage = customPackages[0];
+                console.log('Test package:', testPackage);
+                
+                if (testPackage.playstations && testPackage.playstations.length > 0) {
+                    const playstationIds = testPackage.playstations.map(ps => ps.id);
+                    console.log('Package playstation IDs:', playstationIds);
+                    
+                    const filteredDevices = devices.filter(device => {
+                        if (!device || !device.playstation_id) return false;
+                        if (device.status !== 'Tersedia') return false;
+                        return playstationIds.includes(device.playstation_id);
+                    });
+                    
+                    console.log('Filtered devices for test package:', filteredDevices);
+                    console.log('Filtered count:', filteredDevices.length);
+                } else {
+                    console.log('Package has no playstations');
+                }
+            } else {
+                console.log('No custom packages available');
+            }
+            
+            console.log('=== END DEBUGGING ===');
+            
             showPrice();
             toggleFields();
         });
@@ -296,23 +331,32 @@
             // Show/hide device and custom package rows
             if (deviceRow) deviceRow.style.display = 'block';
             if (customPackageRow) customPackageRow.style.display = isCustomPackage ? 'block' : 'none';
-            // Hide custom package device row since we use main device select
-            document.getElementById('custom-package-device-row').style.display = 'none';
 
             // Handle device selection based on transaction type
             if (isCustomPackage) {
-                // Disable device selection initially for custom package
-                deviceSelect.disabled = true;
-                deviceHelpText.textContent = 'Pilih paket terlebih dahulu, lalu pilih perangkat';
-                // Clear device selection
+                // Enable device selection for custom package
+                deviceSelect.disabled = false;
                 deviceSelect.value = '';
+                deviceHelpText.textContent = 'Pilih paket terlebih dahulu, lalu pilih perangkat';
+                // Clear form fields
                 document.getElementById('jam_main').value = '';
                 document.getElementById('waktu_Selesai').value = '';
                 document.getElementById('total_ps').value = '';
+                document.getElementById('harga').value = '';
+                document.getElementById('total').value = '';
+                document.getElementById('custom-package-details').style.display = 'none';
+                // Clear FnB container
+                document.getElementById('fnb-container').innerHTML = '';
+                updateFnbTotal();
             } else {
-                // Enable device selection for prepaid/postpaid
-                deviceSelect.disabled = {{ $noDevices ? 'true' : 'false' }};
-                deviceHelpText.textContent = 'Pilih perangkat yang tersedia';
+                // Reset to normal device selection for prepaid/postpaid
+                resetDeviceSelection();
+                // Clear custom package selection
+                document.getElementById('custom_package_id').value = '';
+                document.getElementById('custom-package-details').style.display = 'none';
+                // Clear FnB container
+                document.getElementById('fnb-container').innerHTML = '';
+                updateFnbTotal();
             }
 
             // Update harga label
@@ -493,13 +537,22 @@
         function updateFnbTotal() {
             let totalFnb = 0;
             document.querySelectorAll('.fnb-item').forEach(item => {
-                const qty = parseFloat(item.querySelector('.fnb-qty').value) || 0;
-                const price = parseFloat(item.querySelector('.fnb-price').value) || 0;
-                const total = qty * price;
-                item.querySelector('.fnb-total').value = total;
-                totalFnb += total;
+                const qtyInput = item.querySelector('.fnb-qty');
+                const priceInput = item.querySelector('.fnb-price');
+                const totalInput = item.querySelector('.fnb-total');
+
+                if (qtyInput && priceInput && totalInput) {
+                    const qty = parseFloat(qtyInput.value) || 0;
+                    const price = parseFloat(priceInput.value) || 0;
+                    const total = qty * price;
+                    totalInput.value = total;
+                    totalFnb += total;
+                }
             });
-            document.getElementById('fnb_total').value = totalFnb;
+            const fnbTotalElement = document.getElementById('fnb_total');
+            if (fnbTotalElement) {
+                fnbTotalElement.value = totalFnb;
+            }
             updateGrandTotal();
         }
 
@@ -543,6 +596,8 @@
                 document.getElementById('harga').value = 0;
                 document.getElementById('total').value = 0;
                 document.getElementById('custom-package-details').style.display = 'none';
+                // Reset device selection when no package is selected
+                resetDeviceSelection();
                 return;
             }
 
@@ -590,8 +645,8 @@
             // Set the total price from the package
             document.getElementById('total').value = package.harga_total;
 
-            // Filter devices based on package playstations
-            filterDevicesByPackage(package);
+            // Filter devices based on package playstations and enable device selection
+            filterDevicesForCustomPackage(package);
 
             // Clear existing FnB items
             const fnbContainer = document.getElementById('fnb-container');
@@ -614,15 +669,15 @@
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label small mb-1">Qty</label>
-                                <input type="number" class="form-control form-control-sm" name="fnbs_qty[]" value="${fnb.pivot.quantity}" readonly>
+                                <input type="number" class="form-control form-control-sm fnb-qty" name="fnbs_qty[]" value="${fnb.pivot.quantity}" readonly>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label small mb-1">Harga Jual</label>
-                                <input type="number" class="form-control form-control-sm" name="fnbs_harga[]" value="${fnb.harga_jual}" readonly>
+                                <input type="number" class="form-control form-control-sm fnb-price" name="fnbs_harga[]" value="${fnb.harga_jual}" readonly>
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label small mb-1">Total</label>
-                                <input type="number" class="form-control form-control-sm" value="${fnb.pivot.quantity * fnb.harga_jual}" readonly>
+                                <input type="number" class="form-control form-control-sm fnb-total" value="${fnb.pivot.quantity * fnb.harga_jual}" readonly>
                             </div>
                             <div class="col-md-1 text-end">
                                 <span class="badge bg-info">Paket</span>
@@ -635,149 +690,106 @@
 
             // Update FNB total
             updateFnbTotal();
-
-            // Load devices for this custom package
-            loadCustomPackageDevices(package);
-            // Also update the main device select to show only devices for this package
-            loadPackageSpecificDevices(package);
         }
 
-        function loadAllCustomPackageDevices() {
-            const deviceSelect = document.getElementById('device_id');
-
-            // Clear existing options
-            deviceSelect.innerHTML = '<option value="" selected disabled hidden>Pilih nama perangkat</option>';
-
-            // Get all unique playstation IDs from all custom packages
-            const allPlaystationIds = new Set();
-            @json($customPackages).forEach(package => {
-                if (package.playstations) {
-                    package.playstations.forEach(ps => allPlaystationIds.add(ps.id));
-                }
-            });
-
-            // Filter devices based on playstation types used in custom packages and availability
-            const availableDevices = devices.filter(device =>
-                allPlaystationIds.has(device.playstation_id) && device.status === 'Tersedia'
-            );
-
-            // Populate device options
-            availableDevices.forEach(device => {
-                const option = document.createElement('option');
-                const playstationName = device.playstation ? device.playstation.nama : 'Tidak Diketahui';
-                option.value = device.id;
-                option.textContent = `${device.nama} - ${playstationName}`;
-                deviceSelect.appendChild(option);
-            });
-        }
-
-        function loadPackageSpecificDevices(package) {
-            const deviceSelect = document.getElementById('device_id');
-
-            // Clear existing options
-            deviceSelect.innerHTML = '<option value="" selected disabled hidden>Pilih nama perangkat</option>';
-
-            if (!package.playstations || package.playstations.length === 0) {
-                return;
-            }
-
-            // Get playstation IDs from the selected package
-            const playstationIds = package.playstations.map(ps => ps.id);
-
-            // Filter devices based on playstation types from this package and availability
-            const availableDevices = devices.filter(device =>
-                playstationIds.includes(device.playstation_id) && device.status === 'Tersedia'
-            );
-
-            // Populate device options
-            availableDevices.forEach(device => {
-                const option = document.createElement('option');
-                const playstationName = device.playstation ? device.playstation.nama : 'Tidak Diketahui';
-                option.value = device.id;
-                option.textContent = `${device.nama} - ${playstationName}`;
-                deviceSelect.appendChild(option);
-            });
-        }
-
-        function loadCustomPackageDevices(package) {
-            const deviceSelect = document.getElementById('custom_package_device_id');
-            const deviceRow = document.getElementById('custom-package-device-row');
-
-            // Clear existing options
-            deviceSelect.innerHTML = '<option value="" selected disabled hidden>Pilih perangkat yang tersedia</option>';
-
-            if (!package.playstations || package.playstations.length === 0) {
-                deviceRow.style.display = 'none';
-                return;
-            }
-
-            // Get playstation IDs from package
-            const playstationIds = package.playstations.map(ps => ps.id);
-
-            // Filter devices based on playstation types and availability
-            const availableDevices = devices.filter(device =>
-                playstationIds.includes(device.playstation_id) && device.status === 'Tersedia'
-            );
-
-            if (availableDevices.length === 0) {
-                deviceRow.style.display = 'none';
-                return;
-            }
-
-            // Populate device options
-            availableDevices.forEach(device => {
-                const option = document.createElement('option');
-                const playstationName = device.playstation ? device.playstation.nama : 'Tidak Diketahui';
-                option.value = device.id;
-                option.textContent = `${device.nama} - ${playstationName}`;
-                deviceSelect.appendChild(option);
-            });
-
-            // Show device selection row
-            deviceRow.style.display = 'block';
-        }
-
-        function filterDevicesByPackage(package) {
+        function resetDeviceSelection() {
             const deviceSelect = document.getElementById('device_id');
             const deviceHelpText = document.getElementById('device-help-text');
             
+            // Reset to original state for non-custom package transactions
+            deviceSelect.innerHTML = '<option value="dummy" selected disabled hidden>Pilih nama perangkat</option>';
+            
+            // Re-populate with all available devices
+            devices.forEach(device => {
+                if (device.status === 'Tersedia') {
+                    const option = document.createElement('option');
+                    const playstationName = device.playstation ? device.playstation.nama : 'Tidak Diketahui';
+                    option.value = device.id;
+                    option.textContent = `${device.nama} - ${playstationName}`;
+                    deviceSelect.appendChild(option);
+                }
+            });
+            
+            deviceSelect.disabled = {{ $noDevices ? 'true' : 'false' }};
+            deviceHelpText.textContent = 'Pilih perangkat yang tersedia';
+        }
+
+        function filterDevicesForCustomPackage(package) {
+            const deviceSelect = document.getElementById('device_id');
+            const deviceHelpText = document.getElementById('device-help-text');
+
             // Clear existing options
-            deviceSelect.innerHTML = '<option value="" selected disabled hidden>Pilih perangkat yang tersedia</option>';
+            deviceSelect.innerHTML = '<option value="" selected disabled hidden>Pilih perangkat yang sesuai dengan paket</option>';
+
+            console.log('=== DEBUGGING CUSTOM PACKAGE DEVICE FILTERING ===');
+            console.log('Package data:', package);
+            console.log('Devices array length:', devices.length);
+            console.log('Devices array:', devices);
 
             if (!package.playstations || package.playstations.length === 0) {
-                deviceSelect.disabled = true;
-                deviceHelpText.textContent = 'Tidak ada perangkat yang tersedia untuk paket ini';
+                console.log('Package has no playstations');
+                deviceSelect.disabled = false;
+                deviceHelpText.textContent = 'Paket ini tidak memiliki perangkat yang tersedia';
                 return;
             }
 
-            // Get playstation IDs from package
-            const playstationIds = package.playstations.map(ps => ps.id);
-            
-            // Get all devices from the server data
-            const allDevices = @json($devices);
-            
+            const playstationIds = package.playstations.map(ps => parseInt(ps.id));
+            console.log('Playstation IDs in package:', playstationIds);
+
             // Filter devices based on playstation types and availability
-            const availableDevices = allDevices.filter(device => {
-                return playstationIds.includes(device.playstation_id) && device.status === 'Tersedia';
+            const availableDevices = devices.filter(device => {
+                console.log('Checking device:', device);
+                console.log('Device playstation_id:', device.playstation_id);
+                console.log('Device status:', device.status);
+
+                // Check if device exists and has playstation_id
+                if (!device || !device.playstation_id) {
+                    console.log('Device rejected: missing device or playstation_id');
+                    return false;
+                }
+
+                // Check if device status is 'Tersedia'
+                if (String(device.status).toLowerCase() !== 'tersedia') {
+                    console.log('Device rejected: status not Tersedia');
+                    return false;
+                }
+
+                // Check if device's playstation_id matches any in the package
+                const psId = parseInt(device.playstation_id);
+                const matches = Number.isFinite(psId) && playstationIds.includes(psId);
+                console.log('Device playstation_id matches package:', matches);
+                return matches;
             });
 
+            console.log('Filtered available devices:', availableDevices);
+            console.log('Number of available devices:', availableDevices.length);
+
             if (availableDevices.length === 0) {
-                deviceSelect.disabled = true;
+                console.log('No devices available for this package');
+                deviceSelect.disabled = false;
                 deviceHelpText.textContent = 'Tidak ada perangkat tersedia yang sesuai dengan paket ini';
                 return;
             }
 
             // Enable device selection and populate options
             deviceSelect.disabled = false;
-            availableDevices.forEach(device => {
+            availableDevices.forEach((device, index) => {
                 const option = document.createElement('option');
                 const playstationName = device.playstation ? device.playstation.nama : 'Tidak Diketahui';
                 option.value = device.id;
                 option.textContent = `${device.nama} - ${playstationName}`;
                 deviceSelect.appendChild(option);
+
+                // Auto-select the first device
+                if (index === 0) {
+                    deviceSelect.value = device.id;
+                    // Trigger the price calculation
+                    showPrice();
+                }
             });
 
             deviceHelpText.textContent = `${availableDevices.length} perangkat tersedia yang sesuai dengan paket`;
+            console.log('=== END DEBUGGING ===');
         }
 
         function showTime() {
@@ -801,4 +813,3 @@
         }
     </script>
 @endsection
-

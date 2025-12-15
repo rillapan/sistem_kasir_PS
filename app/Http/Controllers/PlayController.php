@@ -48,12 +48,10 @@ class PlayController extends Controller
         $validatedData = $request->validate([
             'nama' => 'required|min:3',
             'harga' => 'required',
-            'image' => 'image|file|max:1024'
+            
         ]);
 
-        if ($request->file('image')) {
-            $validatedData['image'] = $request->file('image')->store('post-images', 'public');
-        }
+        
 
         Playstation::create($validatedData);
 
@@ -100,15 +98,10 @@ class PlayController extends Controller
         $validatedData = $request->validate([
             'nama' => 'required|min:3',
             'harga' => 'required',
-            'image' => 'image|file|max:1024'
+            
         ]);
 
-        if ($request->file('image')) {
-            if ($play->image) {
-                Storage::delete($play->image);
-            }
-            $validatedData['image'] = $request->file('image')->store('post-images', 'public');
-        }
+        
 
         Playstation::where('id', $id)->update($validatedData);
 

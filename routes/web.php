@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 
 /*
 |--------------------------------------------------------------------------
@@ -40,6 +41,9 @@ Route::middleware(['auth'])->group(function () {
 
 // Admin + Kasir Routes
 Route::middleware(['auth', 'check_role:admin,kasir'])->group(function () {
+    // Debug endpoint for device testing
+    Route::get('/debug/devices', [App\Http\Controllers\DebugController::class, 'deviceDebug']);
+    
     // Transaction
     Route::resource('/transaction', App\Http\Controllers\TransactionController::class);
     Route::get('/transaction/{id}/payment', [App\Http\Controllers\TransactionController::class, 'showPayment'])->name('transaction.showPayment');
@@ -99,6 +103,8 @@ Route::middleware(['auth', 'check_role:admin'])->group(function () {
     Route::resource('/custom-package', App\Http\Controllers\CustomPackageController::class);
     Route::put('/custom-package/{id}/toggle-status', [App\Http\Controllers\CustomPackageController::class, 'toggleStatus'])->name('custom-package.toggle-status');
     
-    // Guide
-    Route::get('/panduan', [App\Http\Controllers\PanduanController::class, 'index'])->name('panduan.index');
+    // App Settings (Admin only)
+    Route::get('/settings', [App\Http\Controllers\AppSettingsController::class, 'index'])->name('settings.index');
+    Route::post('/settings/reset-transactions', [App\Http\Controllers\AppSettingsController::class, 'resetTransactions'])->name('settings.reset-transactions');
+    
 });

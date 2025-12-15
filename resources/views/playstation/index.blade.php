@@ -35,7 +35,6 @@
                 <thead>
                     <tr>
                         <th scope="col">No</th>
-                        <th scope="col">Gambar</th>
                         <th scope="col">Nama</th>
                         <th scope="col">Harga</th>
                         <th scope="col">Action</th>
@@ -46,13 +45,6 @@
                         <tr>
                             <th scope="row">
                                 {{ ($plays->currentpage() - 1) * $plays->perpage() + $loop->index + 1 }}</th>
-                            <td>
-                                @if($play->image && Storage::disk('public')->exists($play->image))
-                                    <img width="150px" src="{{ asset('storage/' . $play->image) }}" alt="Playstation Image">
-                                @else
-                                    <img width="150px" src="{{ asset('img/undraw_rocket.svg') }}" alt="Placeholder Image">
-                                @endif
-                            </td>
                             <td>{{ $play->nama }}</td>
                             <td>{{ 'Rp ' . number_format($play->harga, 0, ',', '.') }}</td>
                             <td class="d-flex">

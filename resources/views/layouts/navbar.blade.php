@@ -111,8 +111,12 @@
             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown"
                 aria-haspopup="true" aria-expanded="false">
                 <span class="mr-2 d-none d-lg-inline text-gray-600 small">{{ auth()->user()->name }}</span>
-                @if(auth()->user()->image)
-                    <img class="img-profile rounded-circle" src="{{ asset('storage/' . auth()->user()->image) }}" alt="Profile" />
+                @php
+                    $userImage = auth()->user()->image ?? null;
+                    $userImagePath = $userImage ? public_path('storage/' . $userImage) : null;
+                @endphp
+                @if($userImagePath && file_exists($userImagePath))
+                    <img class="img-profile rounded-circle" src="{{ asset('storage/' . $userImage) }}" alt="Profile" />
                 @else
                     <img class="img-profile rounded-circle" src="{{ asset('img/undraw_profile.svg') }}" alt="Default Profile" />
                 @endif

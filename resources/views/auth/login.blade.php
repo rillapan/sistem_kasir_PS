@@ -82,7 +82,8 @@
                                         </button>
                                         <hr>
                                         <div class="text-center small">
-                                            Jika lupa password minta hubungi admin untuk mereset password anda
+                                           <p style="color: red"> Lupa Password?</p>
+                                            Jika Anda lupa password, silakan hubungi admin untuk membantu proses reset password Anda.
                                         </div>
                                     </form>
                                     

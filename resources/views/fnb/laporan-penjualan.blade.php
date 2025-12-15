@@ -56,49 +56,6 @@
         </div>
     </div>
 
-    <!-- Summary Table -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Laporan Penjualan FnB ({{ $startDate }} - {{ $endDate }})</h6>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                @if($salesData->isEmpty())
-                    <p class="text-center text-muted">Tidak ada data penjualan untuk periode yang dipilih.</p>
-                @else
-                    <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                        <thead>
-                            <tr>
-                                <th>Nama Produk</th>
-                                <th>Jumlah Terjual</th>
-                                <th>Total Modal</th>
-                                <th>Total Penjualan</th>
-                                <th>Laba/Rugi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($salesData as $data)
-                                <tr>
-                                    <td>{{ $data->nama }}</td>
-                                    <td>{{ $data->jumlah_terjual }}</td>
-                                    <td>Rp {{ number_format($data->total_modal, 0, ',', '.') }}</td>
-                                    <td>Rp {{ number_format($data->total_penjualan, 0, ',', '.') }}</td>
-                                    <td>
-                                        @if($data->laba_rugi >= 0)
-                                            <span class="text-success">Rp {{ number_format($data->laba_rugi, 0, ',', '.') }}</span>
-                                        @else
-                                            <span class="text-danger">Rp {{ number_format($data->laba_rugi, 0, ',', '.') }}</span>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                @endif
-            </div>
-        </div>
-    </div>
-
     <!-- Charts -->
     <div class="row">
         <div class="col-lg-6 mb-4">

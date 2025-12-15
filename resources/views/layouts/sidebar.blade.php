@@ -38,6 +38,11 @@
                 <i class="fas fa-gamepad"></i>
                 <span>Jenis Playstation</span></a>
         </li>
+        <li class="nav-item {{ isset($active) && $active === 'settings' ? 'active' : '' }}">
+            <a class="nav-link" href="{{ route('settings.index') }}">
+                <i class="fas fa-cogs"></i>
+                <span>Pengaturan Aplikasi</span></a>
+        </li>
     @endif
 
     @if (auth()->user()->isAdmin() || auth()->user()->isKasir())
@@ -122,17 +127,7 @@
     <!-- Divider -->
     <hr class="sidebar-divider d-none d-md-block">
 
-    @if(auth()->user()->isAdmin())
-    <!-- Panduan -->
-    <div class="sidebar-heading">Panduan</div>
 
-    <li class="nav-item {{ isset($active) && $active === 'panduan' ? 'active' : '' }}">
-        <a class="nav-link" href="{{ route('panduan.index') }}">
-            <i class="fas fa-book"></i>
-            <span>Panduan</span>
-        </a>
-    </li>
-    @endif
 
     <!-- Sidebar Toggler (Sidebar) -->
     <div class="text-center d-none d-md-inline">

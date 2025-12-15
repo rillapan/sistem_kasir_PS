@@ -168,10 +168,44 @@ class TransactionController extends Controller
      */
     public function create()
     {
-        // Call DeviceController's status update logic to ensure device statuses are accurate
-        app(\App\Http\Controllers\DeviceController::class)->index();
+        // Environment debugging
+        $environment = app()->environment();
+        $phpVersion = PHP_VERSION;
+        $memoryLimit = ini_get('memory_limit');
+        $maxExecutionTime = ini_get('max_execution_time');
+        
+        \Log::info('=== TRANSACTION CREATE DEBUG ===');
+        \Log::info('Environment: ' . $environment);
+        \Log::info('PHP Version: ' . $phpVersion);
+        \Log::info('Memory Limit: ' . $memoryLimit);
+        \Log::info('Max Execution Time: ' . $maxExecutionTime);
+        \Log::info('User role: ' . (auth()->user()->role ?? 'guest'));
+        \Log::info('User ID: ' . (auth()->user()->id ?? 'none'));
 
-        $device = Device::with('playstation')->where('status', 'Tersedia')->get();
+        // Call DeviceController's status update logic to ensure device statuses are accurate
+        try {
+            app(\App\Http\Controllers\DeviceController::class)->index();
+            \Log::info('Device status update completed successfully');
+        } catch (\Exception $e) {
+            \Log::error('Device status update failed: ' . $e->getMessage());
+            \Log::error('Error trace: ' . $e->getTraceAsString());
+        }
+
+        // Ensure devices are loaded with playstation relationship and proper status
+        try {
+            $device = Device::with('playstation')
+                ->where('status', 'Tersedia')
+                ->get();
+                
+            \Log::info('Device query executed successfully');
+            \Log::info('Device count: ' . $device->count());
+            \Log::info('Devices data:', $device->toArray());
+            
+        } catch (\Exception $e) {
+            \Log::error('Device query failed: ' . $e->getMessage());
+            $device = collect(); // Empty collection as fallback
+        }
+            
         $noDevices = $device->isEmpty();
         $playstation = Playstation::all();
         $fnbs = Fnb::all();
@@ -179,6 +213,11 @@ class TransactionController extends Controller
 
         $now = Carbon::now();
         $currentTime = $now->format('H:i');
+
+        \Log::info('No devices flag: ' . ($noDevices ? 'true' : 'false'));
+        \Log::info('Playstation count: ' . $playstation->count());
+        \Log::info('Custom packages count: ' . $customPackages->count());
+        \Log::info('=== END TRANSACTION CREATE DEBUG ===');
 
         return view('transaction.create', [
             'title' => 'Create Transaction',
