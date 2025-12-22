@@ -1,0 +1,25 @@
+﻿D:\web rental PS\rentalPS-wiradesa\app\Http\Controllers\AppSettingsController.php:36:        DB::transaction(function () {
+D:\web rental PS\rentalPS-wiradesa\app\Http\Controllers\DeviceController.php:117:        $latestTransactionsSub = Transaction::select('device_id', DB::raw('MAX(created_at) as latest_transaction_at'))
+D:\web rental PS\rentalPS-wiradesa\app\Http\Controllers\FnbController.php:209:        $salesData = DB::table('transaction_fnbs')
+D:\web rental PS\rentalPS-wiradesa\app\Http\Controllers\FnbController.php:216:                DB::raw('SUM(transaction_fnbs.qty) as jumlah_terjual'),
+D:\web rental PS\rentalPS-wiradesa\app\Http\Controllers\FnbController.php:217:                DB::raw('SUM(fnbs.harga_beli * transaction_fnbs.qty) as total_modal'),
+D:\web rental PS\rentalPS-wiradesa\app\Http\Controllers\FnbController.php:218:                DB::raw('SUM(transaction_fnbs.harga_jual * transaction_fnbs.qty) as total_penjualan'),
+D:\web rental PS\rentalPS-wiradesa\app\Http\Controllers\FnbController.php:219:                DB::raw('SUM((transaction_fnbs.harga_jual - fnbs.harga_beli) * transaction_fnbs.qty) as laba_rugi')
+D:\web rental PS\rentalPS-wiradesa\app\Http\Controllers\FnbController.php:244:        return DB::table('transaction_fnbs')
+D:\web rental PS\rentalPS-wiradesa\app\Http\Controllers\FnbController.php:248:                DB::raw('DATE(transactions.created_at) as date'),
+D:\web rental PS\rentalPS-wiradesa\app\Http\Controllers\FnbController.php:249:                DB::raw('SUM(transaction_fnbs.qty) as total_qty')
+D:\web rental PS\rentalPS-wiradesa\app\Http\Controllers\FnbController.php:287:        $salesData = DB::table('transaction_fnbs')
+D:\web rental PS\rentalPS-wiradesa\app\Http\Controllers\FnbController.php:293:                DB::raw('SUM(transaction_fnbs.qty) as jumlah_terjual'),
+D:\web rental PS\rentalPS-wiradesa\app\Http\Controllers\FnbController.php:294:                DB::raw('SUM(fnbs.harga_beli * transaction_fnbs.qty) as total_modal'),
+D:\web rental PS\rentalPS-wiradesa\app\Http\Controllers\FnbController.php:295:                DB::raw('SUM(transaction_fnbs.harga_jual * transaction_fnbs.qty) as total_penjualan'),
+D:\web rental PS\rentalPS-wiradesa\app\Http\Controllers\FnbController.php:296:                DB::raw('SUM((transaction_fnbs.harga_jual - fnbs.harga_beli) * transaction_fnbs.qty) as laba_rugi')
+D:\web rental PS\rentalPS-wiradesa\app\Http\Controllers\FnbController.php:333:        $salesData = DB::table('transaction_fnbs')
+D:\web rental PS\rentalPS-wiradesa\app\Http\Controllers\FnbController.php:339:                DB::raw('SUM(transaction_fnbs.qty) as jumlah_terjual'),
+D:\web rental PS\rentalPS-wiradesa\app\Http\Controllers\FnbController.php:340:                DB::raw('SUM(fnbs.harga_beli * transaction_fnbs.qty) as total_modal'),
+D:\web rental PS\rentalPS-wiradesa\app\Http\Controllers\FnbController.php:341:                DB::raw('SUM(transaction_fnbs.harga_jual * transaction_fnbs.qty) as total_penjualan'),
+D:\web rental PS\rentalPS-wiradesa\app\Http\Controllers\FnbController.php:342:                DB::raw('SUM((transaction_fnbs.harga_jual - fnbs.harga_beli) * transaction_fnbs.qty) as laba_rugi')
+D:\web rental PS\rentalPS-wiradesa\app\Http\Controllers\TransactionController.php:409:            DB::beginTransaction();
+D:\web rental PS\rentalPS-wiradesa\app\Http\Controllers\TransactionController.php:424:                        DB::rollBack();
+D:\web rental PS\rentalPS-wiradesa\app\Http\Controllers\TransactionController.php:462:                            DB::rollBack();
+D:\web rental PS\rentalPS-wiradesa\app\Http\Controllers\TransactionController.php:495:            DB::commit();
+D:\web rental PS\rentalPS-wiradesa\app\Http\Controllers\TransactionController.php:497:            DB::rollBack();

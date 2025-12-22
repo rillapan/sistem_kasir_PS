@@ -11,6 +11,8 @@ use App\Models\StockMutation;
 use App\Models\CustomPackage;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class TransactionController extends Controller
 {
@@ -191,9 +193,9 @@ class TransactionController extends Controller
             \Log::error('Error trace: ' . $e->getTraceAsString());
         }
 
-        // Ensure devices are loaded with playstation relationship and proper status
+        // Ensure devices are loaded with playstation relationships and proper status
         try {
-            $device = Device::with('playstation')
+            $device = Device::with(['playstation', 'playstations'])
                 ->where('status', 'Tersedia')
                 ->get();
                 
@@ -209,7 +211,7 @@ class TransactionController extends Controller
         $noDevices = $device->isEmpty();
         $playstation = Playstation::all();
         $fnbs = Fnb::all();
-        $customPackages = CustomPackage::active()->with(['playstations', 'fnbs', 'priceGroup'])->get();
+        $customPackages = CustomPackage::active()->with(['playstations', 'fnbs', 'priceGroups'])->get();
 
         $now = Carbon::now();
         $currentTime = $now->format('H:i');
@@ -241,12 +243,29 @@ class TransactionController extends Controller
     {
         $tanggal = Carbon::now()->format('Y-m-d');
         $start_time = Carbon::now()->format('H:i');
-        $jam_main = $request->jam_main;
-        $end_time = Carbon::parse($start_time)->addHours((int)$jam_main)->format('H:i');
+        
+        // Correctly identify jam_main early for calculations
+        if ($request->tipe_transaksi === 'custom_package') {
+            $customPackage = CustomPackage::with('playstations')->findOrFail($request->custom_package_id);
+            // We'll calculate specific duration later based on device, 
+            // but for initial end_time estimate we can use the sum
+            $jam_main_calc = $customPackage->playstations->sum('pivot.lama_main');
+            $end_time = Carbon::parse($start_time)->addMinutes($jam_main_calc)->format('H:i');
+        } elseif ($request->tipe_transaksi === 'prepaid') {
+            $jam_main_calc = ($request->jam_main_select && $request->jam_main_select !== 'custom') 
+                ? $request->jam_main_select 
+                : $request->jam_main;
+            $end_time = is_numeric($jam_main_calc) ? Carbon::parse($start_time)->addHours((int)$jam_main_calc)->format('H:i') : null;
+        } else {
+            // Postpaid
+            $jam_main_calc = null;
+            $end_time = null;
+        }
        
         // Mengecek apakah waktu mulai dan waktu selesai sudah ada di database
         $existingTransaction = Transaction::where('device_id', $request->device_id)->whereDate('created_at', $tanggal)
             ->where(function ($query) use ($start_time, $end_time) {
+                if (!$end_time) return; // Skip if no end time (postpaid)
                 $query->where(function ($query) use ($start_time) {
                     $query->where('waktu_mulai', '<=', $start_time)
                         ->where('waktu_Selesai', '>', $start_time);
@@ -269,9 +288,9 @@ class TransactionController extends Controller
             'custom_package_id' => 'required_if:tipe_transaksi,custom_package|exists:custom_packages,id',
             'user_id' => 'nullable|exists:users,id',
             'harga' => 'required_if:tipe_transaksi,prepaid,custom_package|nullable',
-            'jam_main' => 'required_if:tipe_transaksi,prepaid|nullable|max:2',
+            'jam_main' => 'required_if:tipe_transaksi,prepaid|nullable',
             'jam_main_select' => 'nullable|string',
-            'total' => 'required',
+            'total' => 'required_unless:tipe_transaksi,postpaid|nullable',
             'status_transaksi' => 'nullable',
             'tipe_transaksi' => 'required|in:prepaid,postpaid,custom_package',
             'fnb_ids.*' => 'nullable|exists:fnbs,id',
@@ -283,12 +302,8 @@ class TransactionController extends Controller
         $validatedData['waktu_mulai'] = $start_time;
         $validatedData['tipe_transaksi'] = $request->tipe_transaksi;
         
-        // Handle jam_main from select or input
-        if ($request->jam_main_select && $request->jam_main_select !== 'custom') {
-            $jam_main = $request->jam_main_select;
-        } else {
-            $jam_main = $request->jam_main;
-        }
+        // Use the duration we already calculated or extracted
+        $jam_main = $jam_main_calc;
 
         if ($request->tipe_transaksi === 'custom_package') {
             $customPackage = CustomPackage::with(['playstations', 'fnbs'])->findOrFail($request->custom_package_id);
@@ -299,10 +314,14 @@ class TransactionController extends Controller
             }
 
             // Get the selected device and validate it belongs to the package's PlayStation types
-            $selectedDevice = Device::findOrFail($request->device_id);
-            $playstationIds = $customPackage->playstations->pluck('id');
+            $selectedDevice = Device::with('playstations')->findOrFail($request->device_id);
+            $playstationIds = $customPackage->playstations->pluck('id')->toArray();
             
-            if (!$playstationIds->contains($selectedDevice->playstation_id)) {
+            // Check if device matches via many-to-many OR old single column
+            $isCompatible = $selectedDevice->playstations->pluck('id')->intersect($playstationIds)->isNotEmpty()
+                          || (isset($selectedDevice->playstation_id) && in_array($selectedDevice->playstation_id, $playstationIds));
+
+            if (!$isCompatible) {
                 return redirect()->back()->with('gagal', 'Perangkat yang dipilih tidak sesuai dengan paket custom.');
             }
 
@@ -316,8 +335,18 @@ class TransactionController extends Controller
             $validatedData['total'] = $customPackage->harga_total;
             $validatedData['status_transaksi'] = 'sukses';
 
-            // Calculate total playtime from package
-            $totalJamMain = $customPackage->playstations->sum('pivot.lama_main');
+            // Find the duration for this specific PlayStation type from the package
+            $playstationId = $selectedDevice->playstation_id;
+            $packagePlaystation = $customPackage->playstations->where('id', $playstationId)->first();
+            
+            // If device has many-to-many playstations, try to match any of them
+            if (!$packagePlaystation && $selectedDevice->playstations->isNotEmpty()) {
+                $packagePlaystation = $customPackage->playstations->intersect($selectedDevice->playstations)->first();
+            }
+
+            // Calculate total playtime from package duration for this specific PS type
+            $totalJamMain = $packagePlaystation ? $packagePlaystation->pivot->lama_main : $customPackage->playstations->sum('pivot.lama_main');
+            
             $validatedData['jam_main'] = $totalJamMain;
             $validatedData['waktu_Selesai'] = Carbon::parse($start_time)->addMinutes($totalJamMain)->format('H:i');
 
@@ -377,82 +406,65 @@ class TransactionController extends Controller
         unset($validatedData['fnbs_harga']);
 
         try {
+            \DB::beginTransaction();
+
             $transaction = Transaction::create($validatedData);
+            
+            // Handle FnB items
+            $addedFnbIds = [];
+            // For custom packages, we now rely on the pre-filled form items which are sent via fnb_ids array
+
+            
+            if ($request->has('fnb_ids')) {
+                // For regular transactions or additional items in custom package, handle FnB from form
+                foreach ($request->fnb_ids as $index => $fnb_id) {
+                    if ($fnb_id && $request->fnbs_qty[$index] > 0) {
+                        // Skip if already added as part of the package
+                        if (in_array($fnb_id, $addedFnbIds)) continue;
+                        
+                        $fnb = Fnb::findOrFail($fnb_id);
+    
+                        // Check stock only if not unlimited (stok != -1)
+                        if ($fnb->stok != -1 && $fnb->stok < $request->fnbs_qty[$index]) {
+                            \DB::rollBack();
+                            return back()->with('gagal', 'Stok FnB tidak cukup untuk ' . $fnb->nama);
+                        }
+    
+                        TransactionFnb::create([
+                            'transaction_id' => $transaction->id_transaksi,
+                            'fnb_id' => $fnb_id,
+                            'qty' => $request->fnbs_qty[$index],
+                            'harga_jual' => $request->fnbs_harga[$index] ?? $fnb->harga_jual
+                        ]);
+    
+                        // Update stock only if not unlimited (stok != -1)
+                        if ($fnb->stok != -1) {
+                            $fnb->decrement('stok', $request->fnbs_qty[$index]);
+                        }
+    
+                        // Create stock mutation
+                        StockMutation::create([
+                            'fnb_id' => $fnb_id,
+                            'type' => 'out',
+                            'qty' => $request->fnbs_qty[$index],
+                            'date' => now()->toDateString(),
+                            'note' => 'Penjualan transaksi #' . $transaction->id_transaksi
+                        ]);
+                    }
+                }
+            }
+    
+            $device = Device::find($validatedData['device_id']);
+            if ($device) {
+                $device->update(['status' => 'Digunakan']);
+            }
+
+            \DB::commit();
         } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Transaction Store Error: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
             return redirect()->back()->with('gagal', 'Gagal menyimpan transaksi: ' . $e->getMessage());
-        }
-
-        // Handle FnB items
-        if ($request->tipe_transaksi === 'custom_package') {
-            // For custom packages, add FnB items from the package
-            $customPackage = CustomPackage::with('fnbs')->findOrFail($request->custom_package_id);
-            foreach ($customPackage->fnbs as $fnb) {
-                $qty = $fnb->pivot->quantity;
-
-                // Check stock only if not unlimited (stok != -1)
-                if ($fnb->stok != -1 && $fnb->stok < $qty) {
-                    return back()->with('gagal', 'Stok FnB tidak cukup untuk ' . $fnb->nama . ' dalam paket custom');
-                }
-
-                TransactionFnb::create([
-                    'transaction_id' => $transaction->id_transaksi,
-                    'fnb_id' => $fnb->id,
-                    'qty' => $qty,
-                    'harga_jual' => $fnb->harga_jual
-                ]);
-
-                // Update stock only if not unlimited (stok != -1)
-                if ($fnb->stok != -1) {
-                    $fnb->decrement('stok', $qty);
-                }
-
-                // Create stock mutation
-                StockMutation::create([
-                    'fnb_id' => $fnb->id,
-                    'type' => 'out',
-                    'qty' => $qty,
-                    'date' => now()->toDateString(),
-                    'note' => 'Penjualan transaksi custom package #' . $transaction->id_transaksi
-                ]);
-            }
-        } elseif ($request->has('fnb_ids')) {
-            // For regular transactions, handle FnB from form
-            foreach ($request->fnb_ids as $index => $fnb_id) {
-                if ($fnb_id && $request->fnbs_qty[$index] > 0) {
-                    $fnb = Fnb::findOrFail($fnb_id);
-
-                    // Check stock only if not unlimited (stok != -1)
-                    if ($fnb->stok != -1 && $fnb->stok < $request->fnbs_qty[$index]) {
-                        return back()->with('gagal', 'Stok FnB tidak cukup untuk ' . $fnb->nama);
-                    }
-
-                    TransactionFnb::create([
-                        'transaction_id' => $transaction->id_transaksi,
-                        'fnb_id' => $fnb_id,
-                        'qty' => $request->fnbs_qty[$index],
-                        'harga_jual' => $request->fnbs_harga[$index] ?? $fnb->harga_jual
-                    ]);
-
-                    // Update stock only if not unlimited (stok != -1)
-                    if ($fnb->stok != -1) {
-                        $fnb->decrement('stok', $request->fnbs_qty[$index]);
-                    }
-
-                    // Create stock mutation
-                    StockMutation::create([
-                        'fnb_id' => $fnb_id,
-                        'type' => 'out',
-                        'qty' => $request->fnbs_qty[$index],
-                        'date' => now()->toDateString(),
-                        'note' => 'Penjualan transaksi #' . $transaction->id_transaksi
-                    ]);
-                }
-            }
-        }
-
-        $device = Device::find($validatedData['device_id']);
-        if ($device) {
-            $device->update(['status' => 'Digunakan']);
         }
 
         // Handle different actions
@@ -742,6 +754,20 @@ class TransactionController extends Controller
         return response()->json(['fnbs' => $fnbs]);
     }
 
+    public function getFnbsByPriceGroups(Request $request)
+    {
+        $priceGroupIds = $request->query('price_group_ids');
+
+        if (!$priceGroupIds || !is_array($priceGroupIds) || empty($priceGroupIds)) {
+            return response()->json(['fnbs' => []]);
+        }
+
+        $fnbs = Fnb::whereIn('price_group_id', $priceGroupIds)
+            ->get(['id', 'nama', 'harga_jual', 'stok', 'price_group_id']);
+
+        return response()->json(['fnbs' => $fnbs]);
+    }
+
     public function getPriceGroups()
     {
         $priceGroups = \App\Models\PriceGroup::all(['id', 'nama', 'harga', 'deskripsi']);
@@ -788,8 +814,12 @@ class TransactionController extends Controller
                 $durationMinutes = 24 * 60 + $durationMinutes;
             }
 
-            $costPerMinute = $transaction->harga / 60;
-            $totalPs = $durationMinutes * $costPerMinute;
+            // Get the device and playstation for hourly pricing
+            $device = $transaction->device;
+            $playstation = $device->playstation;
+            
+            // Calculate pricing based on hourly prices
+            $totalPs = $this->calculateLostTimePrice($playstation, $durationMinutes);
             
             // Apply specific rounding rules for lost time
             $roundedTotalPs = $this->applyLostTimeRounding($totalPs);
@@ -893,8 +923,10 @@ class TransactionController extends Controller
                  $durationMinutes = 0;
             }
             
-            $costPerMinute = $transaction->harga / 60;
-            $rawTotalPs = $durationMinutes * $costPerMinute;
+            // Use the new lost time pricing calculation
+            $device = $transaction->device;
+            $playstation = $device->playstation;
+            $rawTotalPs = $this->calculateLostTimePrice($playstation, $durationMinutes);
             $totalPs = $this->applyLostTimeRounding($rawTotalPs);
         }
 
@@ -1019,8 +1051,10 @@ class TransactionController extends Controller
                     $durationMinutes += 24 * 60;
                 }
                 
-                $costPerMinute = $transaction->harga / 60;
-                $rawTotalPs = $durationMinutes * $costPerMinute;
+                // Use the new lost time pricing calculation
+                $device = $transaction->device;
+                $playstation = $device->playstation;
+                $rawTotalPs = $this->calculateLostTimePrice($playstation, $durationMinutes);
                 $totalPs = $this->applyLostTimeRounding($rawTotalPs);
             } else {
                 $totalPs = 0;
@@ -1032,6 +1066,47 @@ class TransactionController extends Controller
         
         return redirect()->route('transaction.showPayment', $transaction->id_transaksi)
             ->with('success', $totalAdded . ' item pesanan berhasil ditambahkan');
+    }
+
+    /**
+     * Calculate lost time price based on hourly pricing rules
+     * If duration matches hourly package duration, use package price
+     * Otherwise, use per-minute pricing from base price
+     *
+     * @param Playstation $playstation
+     * @param int $durationMinutes
+     * @return float
+     */
+    private function calculateLostTimePrice($playstation, $durationMinutes)
+    {
+        // Get all available hourly prices (packages) for this PlayStation
+        $hourlyPrices = $playstation->getAvailableHoursWithPrices();
+        $basePrice = (float) ($playstation->harga ?? 0);
+        $costPerMinute = $basePrice / 60;
+        
+        // Split duration into full hours and remaining minutes
+        $fullHours = (int) floor($durationMinutes / 60);
+        $remainingMinutes = (int) ($durationMinutes % 60);
+        
+        $totalPrice = 0;
+        
+        // 1. Calculate price for the full hours part
+        if ($fullHours > 0) {
+            if (isset($hourlyPrices[$fullHours])) {
+                // If there's an hourly package for this exact number of hours, use it
+                $totalPrice += $hourlyPrices[$fullHours];
+            } else {
+                // Otherwise, multiply full hours by the base hourly price
+                $totalPrice += $basePrice * $fullHours;
+            }
+        }
+        
+        // 2. Add per-minute cost for the remaining minutes
+        if ($remainingMinutes > 0) {
+            $totalPrice += $remainingMinutes * $costPerMinute;
+        }
+        
+        return $totalPrice;
     }
 
     /**

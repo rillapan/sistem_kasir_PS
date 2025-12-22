@@ -70,7 +70,7 @@
             <div class="row">
                 <div class="col-md-6">
                     <h5>Perangkat</h5>
-                    @if ($package->devices->count() > 0)
+                    @if ($package->playstations->count() > 0)
                         <table class="table">
                             <thead>
                                 <tr>
@@ -79,10 +79,10 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach ($package->devices as $device)
+                                @foreach ($package->playstations as $playstation)
                                     <tr>
-                                        <td>{{ $device->playstation?->nama ?? 'N/A' }} - {{ $device->nama }}</td>
-                                        <td>{{ $device->pivot->lama_main }} menit</td>
+                                        <td>{{ $playstation->nama }}</td>
+                                        <td>{{ number_format($playstation->pivot->lama_main / 60, 1) }} jam</td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -92,26 +92,28 @@
                     @endif
                 </div>
                 <div class="col-md-6">
+                    <h5>Kelompok Harga</h5>
+                    @if(!empty($package->price_group_names))
+                        @foreach($package->price_group_names as $groupName)
+                            <span class="badge badge-info">{{ $groupName }}</span>
+                        @endforeach
+                    @elseif($package->priceGroup)
+                        <span class="badge badge-info">{{ $package->priceGroup->nama }}</span>
+                    @else
+                        <p>Tidak ada kelompok harga.</p>
+                    @endif
+                    
+                    <hr>
+                    
                     <h5>F&B</h5>
                     @if ($package->fnbs->count() > 0)
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Nama F&B</th>
-                                    <th>Quantity</th>
-                                    <th>Harga</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($package->fnbs as $fnb)
-                                    <tr>
-                                        <td>{{ $fnb->nama }}</td>
-                                        <td>{{ $fnb->pivot->quantity }}</td>
-                                        <td>Rp {{ number_format($fnb->harga_jual, 0, ',', '.') }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                        <div class="d-flex flex-wrap">
+                            @foreach ($package->fnbs as $fnb)
+                                <span class="badge badge-light border mr-2 mb-2 p-2">
+                                    <i class="fas fa-utensils text-primary mr-1"></i> {{ $fnb->nama }}
+                                </span>
+                            @endforeach
+                        </div>
                     @else
                         <p>Tidak ada F&B dalam paket ini.</p>
                     @endif
@@ -125,16 +127,20 @@
                     <h5>Ringkasan Paket</h5>
                     <div class="alert alert-info">
                         <h6>{{ $package->nama_paket }}</h6>
-                        @foreach ($package->devices as $device)
-                            <p class="mb-1">
-                                <i class="fas fa-gamepad"></i> {{ $device->playstation?->nama ?? 'N/A' }} - {{ $device->nama }} ({{ $device->pivot->lama_main }} menit)
-                            </p>
-                        @endforeach
-                        @foreach ($package->fnbs as $fnb)
-                            <p class="mb-1">
-                                <i class="fas fa-utensils"></i> {{ $fnb->nama }} x{{ $fnb->pivot->quantity }}
-                            </p>
-                        @endforeach
+                        @if ($package->playstations && $package->playstations->count() > 0)
+                            @foreach ($package->playstations as $playstation)
+                                <p class="mb-1">
+                                    <i class="fas fa-gamepad"></i> {{ $playstation->nama }} ({{ $playstation->pivot->lama_main }} menit)
+                                </p>
+                            @endforeach
+                        @endif
+                        @if ($package->fnbs && $package->fnbs->count() > 0)
+                            @foreach ($package->fnbs as $fnb)
+                                <p class="mb-1">
+                                    <i class="fas fa-utensils"></i> {{ $fnb->nama }}
+                                </p>
+                            @endforeach
+                        @endif
                         <hr class="my-2">
                         <p class="mb-0"><strong>Total Harga: Rp {{ number_format($package->harga_total, 0, ',', '.') }}</strong></p>
                     </div>

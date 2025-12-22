@@ -96,9 +96,8 @@
                                     <option value="dummy" selected disabled hidden>Pilih nama perangkat</option>
                                     @foreach ($devices as $device)
                                         @php
-                                            $playstationName = $device->playstation ? $device->playstation->nama : 'Tidak Diketahui';
-                                            $displayText = $device->nama . ' - ' . $playstationName;
-                                            $dataPlaystationId = $device->playstation ? $device->playstation->id : '';
+                                            $displayText = $device->nama . ' - ' . ($device->playstation_names ?: 'Tidak Diketahui');
+                                            $dataPlaystationId = $device->playstation_id;
                                         @endphp
                                         @if (old('device_id') == $device->id)
                                             <option value="{{ $device->id }}" data-playstation-id="{{ $dataPlaystationId }}" selected>{{ $displayText }}</option>
@@ -223,11 +222,14 @@
                     </div>
 
                     <!-- FnB Section - Compact Horizontal Layout -->
-                    <div class="row mb-3">
+                    <div class="row mb-3" id="fnb-section">
                         <div class="col-12">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h6 class="text-primary mb-0">FnB Items (Opsional)</h6>
-                                <button type="button" class="btn btn-secondary btn-sm" onclick="addFnbItem()">+ Tambah FnB</button>
+                                <h6 class="text-primary mb-0">
+                                    <span id="fnb-section-title">FnB Items (Opsional)</span>
+                                    <small id="fnb-section-subtitle" class="text-muted d-block"></small>
+                                </h6>
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="addFnbItem(currentPackageFnbs)">+ Tambah FnB</button>
                             </div>
                             <div id="fnb-container" class="border rounded">
                                 <!-- FnB items will be added here -->
@@ -263,6 +265,8 @@
         const member = document.getElementById('member');
         const d = new Date();
         let fnbIndex = 0;
+        let currentPackageFnbs = null; // Store filtered FnBs for current package
+        let packageFnbIds = new Set(); // Store F&B IDs that are included in package price
         const fnbs = @json($fnbs);
         const devices = @json($devices);
 
@@ -359,8 +363,12 @@
                 document.getElementById('harga').value = '';
                 document.getElementById('total').value = '';
                 document.getElementById('custom-package-details').style.display = 'none';
-                // Clear FnB container
+                // Clear FnB container and reset F&B section
                 document.getElementById('fnb-container').innerHTML = '';
+                document.getElementById('fnb-section-title').textContent = 'FnB Items (Opsional)';
+                document.getElementById('fnb-section-subtitle').textContent = '';
+                currentPackageFnbs = null; // Reset filtered FnBs
+                packageFnbIds.clear(); // Reset package F&B IDs
                 updateFnbTotal();
             } else {
                 // Reset to normal device selection for prepaid/postpaid
@@ -368,8 +376,12 @@
                 // Clear custom package selection
                 document.getElementById('custom_package_id').value = '';
                 document.getElementById('custom-package-details').style.display = 'none';
-                // Clear FnB container
+                // Clear FnB container and reset F&B section
                 document.getElementById('fnb-container').innerHTML = '';
+                document.getElementById('fnb-section-title').textContent = 'FnB Items (Opsional)';
+                document.getElementById('fnb-section-subtitle').textContent = '';
+                currentPackageFnbs = null; // Reset filtered FnBs
+                packageFnbIds.clear(); // Reset package F&B IDs
                 updateFnbTotal();
             }
 
@@ -439,6 +451,9 @@
         }
 
         function showPrice() {
+            const isCustomPackage = document.getElementById('custom_package').checked;
+            if (isCustomPackage) return; // In custom package mode, price is fixed by package
+
             const device = document.getElementById('device_id').value;
             const harga = document.getElementById('harga');
             const totalField = document.getElementById('total_ps');
@@ -504,6 +519,9 @@
         }
 
         function handleJamMainChange() {
+            const isCustomPackage = document.getElementById('custom_package').checked;
+            if (isCustomPackage) return; // In custom package mode, price is fixed
+
             const jamMainSelect = document.getElementById('jam_main_select');
             const jamMainInput = document.getElementById('jam_main');
             const customContainer = document.getElementById('custom_jam_main_container');
@@ -567,6 +585,9 @@
         }
 
         function showTotal() {
+            const isCustomPackage = document.getElementById('custom_package').checked;
+            if (isCustomPackage) return; // In custom package mode, price is fixed by package
+
             const harga = parseFloat(document.getElementById('harga').value);
             const jamMainSelect = document.getElementById('jam_main_select');
             const jamMainInput = document.getElementById('jam_main');
@@ -619,38 +640,110 @@
             }
         }
 
-        function addFnbItem() {
+        function loadFnbsFromPriceGroups(priceGroupIds, packageFnbs = null) {
+            // Fetch FnBs from multiple price groups
+            axios.get('/api/get-fnbs-by-price-groups', {
+                params: {
+                    price_group_ids: priceGroupIds
+                }
+            })
+            .then(function(response) {
+                const priceGroupFnbs = response.data.fnbs || [];
+                
+                // Store filtered FnBs globally for this package
+                currentPackageFnbs = priceGroupFnbs;
+                
+                // Add one empty F&B item with filtered options (manual addition by user)
+                addFnbItem(priceGroupFnbs);
+
+                // Update FNB total
+                updateFnbTotal();
+            })
+            .catch(function(error) {
+                console.log('Error loading FnBs from price groups:', error);
+                // Fallback to all FnBs
+                currentPackageFnbs = null;
+                addFnbItem();
+            });
+        }
+
+        function loadFnbsFromPriceGroup(priceGroupId) {
+            // Fetch FnBs from the package's price group
+            axios.get('/api/get-fnbs-by-price-group', {
+                params: {
+                    price_group_id: priceGroupId
+                }
+            })
+            .then(function(response) {
+                const priceGroupFnbs = response.data.fnbs || [];
+                
+                // Store filtered FnBs globally for this package
+                currentPackageFnbs = priceGroupFnbs;
+                
+                // Add one empty F&B item with filtered options
+                addFnbItem(priceGroupFnbs);
+            })
+            .catch(function(error) {
+                console.log('Error loading FnBs from price group:', error);
+                // Fallback to all FnBs
+                currentPackageFnbs = null;
+                addFnbItem();
+            });
+        }
+
+        function addFnbItem(filteredFnbs = null, initialFnbId = null, initialQty = 1) {
             const container = document.getElementById('fnb-container');
             const itemDiv = document.createElement('div');
             itemDiv.className = 'fnb-item border-bottom p-3';
+            
+            // Use filtered FnBs if provided, otherwise use all FnBs
+            const availableFnbs = filteredFnbs || fnbs;
+            
+            // Check if this is for package F&B items (has filteredFnbs and custom package is selected)
+            const isCustomPackage = document.getElementById('custom_package').checked;
+            const isPackageFnb = filteredFnbs && isCustomPackage;
+            
+            // Adjust column layout based on whether this is package F&B
+            const barangCol = isPackageFnb ? 'col-md-6' : 'col-md-4';
+            const qtyCol = isPackageFnb ? 'col-md-4' : 'col-md-2';
+            const priceCol = isPackageFnb ? 'd-none' : 'col-md-3';
+            const totalCol = isPackageFnb ? 'd-none' : 'col-md-2';
+            const removeCol = isPackageFnb ? 'col-md-2 text-end' : 'col-md-1 text-end';
+            
+            const priceRequired = isPackageFnb ? '' : 'required';
+            const priceValue = isPackageFnb ? 'value="0"' : '';
+            
+            const options = availableFnbs.map(fnb => {
+                const stockText = fnb.stok == -1 ? 'Unlimited' : fnb.stok;
+                const selected = (initialFnbId && parseInt(initialFnbId) === parseInt(fnb.id)) ? 'selected' : '';
+                return `<option value="${fnb.id}" data-price="${fnb.harga_jual}" data-stock="${fnb.stok}" ${selected}>${fnb.nama} (Stok: ${stockText})</option>`;
+            }).join('');
+
             itemDiv.innerHTML = `
                 <div class="row g-2 align-items-end">
-                    <div class="col-md-4">
+                    <div class="${barangCol}">
                         <label class="form-label small mb-1">Barang</label>
                         <select class="form-control form-control-sm fnb-select" name="fnb_ids[]" onchange="updateFnbPrice(this, ${fnbIndex})" required>
                             <option value="">Pilih Barang</option>
-                            ${fnbs.map(fnb => {
-                                const stockText = fnb.stok == -1 ? 'Unlimited' : fnb.stok;
-                                return `<option value="${fnb.id}" data-price="${fnb.harga_jual}" data-stock="${fnb.stok}">${fnb.nama} (Stok: ${stockText})</option>`;
-                            }).join('')}
+                            ${options}
                         </select>
                         <small class="text-muted fnb-stock-info" style="display: none; color: #28a745 !important; font-weight: bold;">
                             <i class="fas fa-infinity"></i> <strong>Stok Unlimited</strong> - Bisa dipesan tanpa batasan
                         </small>
                     </div>
-                    <div class="col-md-2">
+                    <div class="${qtyCol}">
                         <label class="form-label small mb-1">Qty</label>
-                        <input type="number" class="form-control form-control-sm fnb-qty" name="fnbs_qty[]" min="1" value="1" onchange="updateFnbTotal()" required>
+                        <input type="number" class="form-control form-control-sm fnb-qty" name="fnbs_qty[]" min="1" value="${initialQty}" onchange="updateFnbTotal()" required>
                     </div>
-                    <div class="col-md-3">
+                    <div class="${priceCol}">
                         <label class="form-label small mb-1">Harga Jual</label>
-                        <input type="number" class="form-control form-control-sm fnb-price" name="fnbs_harga[]" readonly required>
+                        <input type="number" class="form-control form-control-sm fnb-price" name="fnbs_harga[]" readonly ${priceRequired} ${priceValue}>
                     </div>
-                    <div class="col-md-2">
+                    <div class="${totalCol}">
                         <label class="form-label small mb-1">Total</label>
                         <input type="number" class="form-control form-control-sm fnb-total" readonly>
                     </div>
-                    <div class="col-md-1 text-end">
+                    <div class="${removeCol}">
                         <button type="button" class="btn btn-danger btn-sm" onclick="removeFnbItem(this)">
                             <i class="fas fa-times"></i>
                         </button>
@@ -658,19 +751,36 @@
                 </div>
             `;
             container.appendChild(itemDiv);
+            
+            // If initial selection was provided, trigger update price and total
+            const select = itemDiv.querySelector('.fnb-select');
+            if (initialFnbId) {
+                updateFnbPrice(select, fnbIndex);
+            }
+            
             fnbIndex++;
         }
 
         function updateFnbPrice(select, index) {
-            const priceInput = select.closest('.fnb-item').querySelector('.fnb-price');
-            const qtyInput = select.closest('.fnb-item').querySelector('.fnb-qty');
-            const stockInfo = select.closest('.fnb-item').querySelector('.fnb-stock-info');
+            const itemDiv = select.closest('.fnb-item');
+            const priceInput = itemDiv.querySelector('.fnb-price');
+            const qtyInput = itemDiv.querySelector('.fnb-qty');
+            const stockInfo = itemDiv.querySelector('.fnb-stock-info');
             const selectedOption = select.options[select.selectedIndex];
             const stock = parseInt(selectedOption.getAttribute('data-stock'));
             
-            priceInput.value = selectedOption.getAttribute('data-price') || 0;
+            // Only set price if price input exists (not hidden for package F&B)
+            if (priceInput) {
+                const isCustomPackage = document.getElementById('custom_package').checked;
+                // If this is a custom package and we are in the filtered FnB section (implied by context if price input is hidden)
+                // we set price to 0 for the form submission
+                if (isCustomPackage && itemDiv.querySelector('.d-none .fnb-price')) {
+                    priceInput.value = 0;
+                } else {
+                    priceInput.value = selectedOption.getAttribute('data-price') || 0;
+                }
+            }
             
-            // Show/hide unlimited info and remove max limit for qty
             // Show/hide unlimited info and remove max limit for qty
             if (stock === -1) {
                 if (stockInfo) stockInfo.style.display = 'block';
@@ -679,27 +789,66 @@
             } else {
                 if (stockInfo) stockInfo.style.display = 'none';
                 qtyInput.setAttribute('max', stock);
-                qtyInput.removeAttribute('title');
+                qtyInput.setAttribute('title', `Stok tersisa: ${stock}`);
             }
             
+            // Update F&B total to check if this item is package-included
             updateFnbTotal();
         }
 
         function updateFnbTotal() {
             let totalFnb = 0;
+            const isCustomPackage = document.getElementById('custom_package').checked;
+            
             document.querySelectorAll('.fnb-item').forEach(item => {
                 const qtyInput = item.querySelector('.fnb-qty');
                 const priceInput = item.querySelector('.fnb-price');
                 const totalInput = item.querySelector('.fnb-total');
+                const selectInput = item.querySelector('.fnb-select');
 
-                if (qtyInput && priceInput && totalInput) {
+                if (qtyInput && selectInput) {
                     const qty = parseFloat(qtyInput.value) || 0;
-                    const price = parseFloat(priceInput.value) || 0;
-                    const total = qty * price;
-                    totalInput.value = total;
-                    totalFnb += total;
+                    const selectedFnbId = parseInt(selectInput.value);
+                    
+                    // For custom packages, all selected items from the price group are included
+                    let isPackageIncluded = false;
+                    if (isCustomPackage && selectedFnbId) {
+                        isPackageIncluded = true;
+                    }
+                    
+                    // Calculate total only for non-package items with existing price input
+                    let total = 0;
+                    if (priceInput && !isPackageIncluded && selectedFnbId) {
+                        const price = parseFloat(priceInput.value) || 0;
+                        total = qty * price;
+                        
+                        // Set the total display
+                        if (totalInput) {
+                            totalInput.value = total;
+                        }
+                    } else {
+                        // For package items or missing data, set total to 0
+                        if (totalInput) {
+                            totalInput.value = 0;
+                        }
+                        
+                        // Add visual indicator for package-included items
+                        if (totalInput && isPackageIncluded) {
+                            totalInput.style.backgroundColor = '#e8f5e8';
+                            totalInput.setAttribute('title', 'Termasuk dalam paket - tidak dikenakan biaya tambahan');
+                        } else if (totalInput) {
+                            totalInput.style.backgroundColor = '';
+                            totalInput.removeAttribute('title');
+                        }
+                    }
+                    
+                    // Only add to total if not package included
+                    if (!isPackageIncluded) {
+                        totalFnb += total;
+                    }
                 }
             });
+            
             const fnbTotalElement = document.getElementById('fnb_total');
             if (fnbTotalElement) {
                 fnbTotalElement.value = totalFnb;
@@ -709,11 +858,19 @@
 
         function updateGrandTotal() {
             const isPrepaid = document.getElementById('prepaid').checked;
+            const isCustomPackage = document.getElementById('custom_package').checked;
             const totalPs = parseFloat(document.getElementById('total_ps').value) || 0;
             const totalFnb = parseFloat(document.getElementById('fnb_total').value) || 0;
-            if (isPrepaid) {
+            
+            if (isCustomPackage) {
+                // For custom packages, only use package price
+                const packagePrice = parseFloat(document.getElementById('harga').value) || 0;
+                document.getElementById('total').value = packagePrice;
+            } else if (isPrepaid) {
+                // For regular prepaid, use device price + F&B items
                 document.getElementById('total').value = totalPs + totalFnb;
             } else {
+                // For postpaid, only F&B items
                 document.getElementById('total').value = totalFnb;
             }
         }
@@ -749,6 +906,10 @@
                 document.getElementById('custom-package-details').style.display = 'none';
                 // Reset device selection when no package is selected
                 resetDeviceSelection();
+                // Clear package F&B IDs
+                packageFnbIds.clear();
+                // Update grand total to reset properly
+                updateGrandTotal();
                 return;
             }
 
@@ -779,7 +940,7 @@
             if (package.fnbs && package.fnbs.length > 0) {
                 package.fnbs.forEach(fnb => {
                     const li = document.createElement('li');
-                    li.textContent = fnb.nama + ' (Qty: ' + fnb.pivot.quantity + ') - Rp ' + new Intl.NumberFormat('id-ID').format(fnb.harga_jual);
+                    li.textContent = fnb.nama; // Only display name as requested
                     fnbList.appendChild(li);
                 });
             } else {
@@ -788,13 +949,22 @@
                 fnbList.appendChild(li);
             }
 
+            // Store package F&B IDs to exclude them from pricing
+            packageFnbIds.clear();
+            if (package.fnbs && package.fnbs.length > 0) {
+                package.fnbs.forEach(fnb => {
+                    packageFnbIds.add(fnb.id);
+                });
+            }
+
             // Show the details section
             document.getElementById('custom-package-details').style.display = 'block';
 
             // Set the package total as harga (since it's the total for the package)
             document.getElementById('harga').value = package.harga_total;
-            // Set the total price from the package
-            document.getElementById('total').value = package.harga_total;
+            
+            // Update the total using the grand total function to include F&B items
+            updateGrandTotal();
 
             // Filter devices based on package playstations and enable device selection
             filterDevicesForCustomPackage(package);
@@ -803,40 +973,39 @@
             const fnbContainer = document.getElementById('fnb-container');
             fnbContainer.innerHTML = '';
 
-            // Add FnB items from the package (read-only)
+            // Collect all price group IDs from the package (from direct relationship and from FnB items)
+            let priceGroupIds = [];
+            
+            // 1. From many-to-many relationship
+            if (package.price_groups && package.price_groups.length > 0) {
+                package.price_groups.forEach(pg => priceGroupIds.push(pg.id));
+            }
+            
+            // 2. From singular relationship (backward compatibility)
+            if (package.price_group_id && !priceGroupIds.includes(package.price_group_id)) {
+                priceGroupIds.push(package.price_group_id);
+            }
+            
+            // 3. From F&B items attached to the package
             if (package.fnbs && package.fnbs.length > 0) {
-                package.fnbs.forEach((fnb, index) => {
-                    const itemDiv = document.createElement('div');
-                    itemDiv.className = 'fnb-item border-bottom p-3 package-fnb-item';
-                    itemDiv.innerHTML = `
-                        <div class="row g-2 align-items-end">
-                            <div class="col-md-4">
-                                <label class="form-label small mb-1">Barang</label>
-                                <input type="text" class="form-control form-control-sm" value="${fnb.nama}" readonly>
-                                <input type="hidden" name="fnb_ids[]" value="${fnb.id}">
-                                <small class="text-info">
-                                    <i class="fas fa-info-circle"></i> Item dari paket (tidak dapat diubah)
-                                </small>
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label small mb-1">Qty</label>
-                                <input type="number" class="form-control form-control-sm fnb-qty" name="fnbs_qty[]" value="${fnb.pivot.quantity}" readonly>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label small mb-1">Harga Jual</label>
-                                <input type="number" class="form-control form-control-sm fnb-price" name="fnbs_harga[]" value="${fnb.harga_jual}" readonly>
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label small mb-1">Total</label>
-                                <input type="number" class="form-control form-control-sm fnb-total" value="${fnb.pivot.quantity * fnb.harga_jual}" readonly>
-                            </div>
-                            <div class="col-md-1 text-end">
-                                <span class="badge bg-info">Paket</span>
-                            </div>
-                        </div>
-                    `;
-                    fnbContainer.appendChild(itemDiv);
+                package.fnbs.forEach(fnb => {
+                    if (fnb.price_group_id && !priceGroupIds.includes(fnb.price_group_id)) {
+                        priceGroupIds.push(fnb.price_group_id);
+                    }
                 });
+            }
+
+            // Load FnB items from package's price groups for manual selection
+            if (priceGroupIds.length > 0) {
+                // Update F&B section title to show it's from price groups
+                document.getElementById('fnb-section-title').textContent = 'FnB Items dari Kelompok Harga Paket';
+                document.getElementById('fnb-section-subtitle').textContent = `Pilih F&B yang tersedia dalam ${priceGroupIds.length} kelompok harga (item dalam paket ini tidak dikenakan biaya tambahan)`;
+                loadFnbsFromPriceGroups(priceGroupIds, package.fnbs);
+            } else {
+                // If no price groups, load all FnBs
+                document.getElementById('fnb-section-title').textContent = 'FnB Items (Opsional)';
+                document.getElementById('fnb-section-subtitle').textContent = '';
+                addFnbItem(); // Add one empty F&B item
             }
 
             // Update FNB total
@@ -854,9 +1023,8 @@
             devices.forEach(device => {
                 if (device.status === 'Tersedia') {
                     const option = document.createElement('option');
-                    const playstationName = device.playstation ? device.playstation.nama : 'Tidak Diketahui';
                     option.value = device.id;
-                    option.textContent = `${device.nama} - ${playstationName}`;
+                    option.textContent = `${device.nama} - ${device.playstation_names || 'Tidak Diketahui'}`;
                     deviceSelect.appendChild(option);
                 }
             });
@@ -891,11 +1059,12 @@
             const availableDevices = devices.filter(device => {
                 console.log('Checking device:', device);
                 console.log('Device playstation_id:', device.playstation_id);
+                console.log('Device playstations:', device.playstations);
                 console.log('Device status:', device.status);
 
-                // Check if device exists and has playstation_id
-                if (!device || !device.playstation_id) {
-                    console.log('Device rejected: missing device or playstation_id');
+                // Check if device exists
+                if (!device) {
+                    console.log('Device rejected: missing device');
                     return false;
                 }
 
@@ -905,11 +1074,26 @@
                     return false;
                 }
 
-                // Check if device's playstation_id matches any in the package
-                const psId = parseInt(device.playstation_id);
-                const matches = Number.isFinite(psId) && playstationIds.includes(psId);
-                console.log('Device playstation_id matches package:', matches);
-                return matches;
+                // Check if device's playstations match any in the package
+                // First check the new many-to-many relationship
+                if (device.playstations && Array.isArray(device.playstations) && device.playstations.length > 0) {
+                    const devicePsIds = device.playstations.map(ps => parseInt(ps.id));
+                    const hasMatch = devicePsIds.some(psId => playstationIds.includes(psId));
+                    console.log('Device playstation IDs:', devicePsIds);
+                    console.log('Has match with package playstations:', hasMatch);
+                    if (hasMatch) return true;
+                }
+                
+                // Fallback to old single playstation_id relationship
+                if (device.playstation_id) {
+                    const psId = parseInt(device.playstation_id);
+                    const matches = Number.isFinite(psId) && playstationIds.includes(psId);
+                    console.log('Device playstation_id matches package (fallback):', matches);
+                    return matches;
+                }
+
+                console.log('Device rejected: no playstation relationship found');
+                return false;
             });
 
             console.log('Filtered available devices:', availableDevices);
@@ -926,7 +1110,18 @@
             deviceSelect.disabled = false;
             availableDevices.forEach((device, index) => {
                 const option = document.createElement('option');
-                const playstationName = device.playstation ? device.playstation.nama : 'Tidak Diketahui';
+                
+                // Get PlayStation name(s) for the device
+                let playstationName = 'Tidak Diketahui';
+                if (device.playstations && Array.isArray(device.playstations) && device.playstations.length > 0) {
+                    // New many-to-many relationship - show all PlayStation types
+                    const psNames = device.playstations.map(ps => ps.nama).join(', ');
+                    playstationName = psNames;
+                } else if (device.playstation && device.playstation.nama) {
+                    // Fallback to old single relationship
+                    playstationName = device.playstation.nama;
+                }
+                
                 option.value = device.id;
                 option.textContent = `${device.nama} - ${playstationName}`;
                 deviceSelect.appendChild(option);

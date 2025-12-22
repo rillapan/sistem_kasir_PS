@@ -102,8 +102,14 @@
                             </div>
                             <div class="card-body">
                                 <div class="mb-2">
-                                    <strong>Jenis Playstation:</strong> {{ $device->playstation->nama ?? 'Tidak Diketahui' }}
-
+                                    <strong>Jenis Playstation:</strong> 
+                                    @if($device->playstations->count() > 0)
+                                        @foreach($device->playstations as $playstation)
+                                            <span class="badge badge-info">{{ $playstation->nama }}</span>
+                                        @endforeach
+                                    @else
+                                        {{ $device->playstation->nama ?? 'Tidak Diketahui' }}
+                                    @endif
                                 </div>
                                 <div class="mb-2" id="status-{{ $device->id }}">
                                     <strong>Status:</strong>

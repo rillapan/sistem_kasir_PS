@@ -29,16 +29,21 @@
                         @enderror
                     </div>
                     <div class="mb-3">
-                        <label for="playstation_id">Jenis Playstation</label>
-                        <select class="form-control" id="playstation_id" name="playstation_id">
+                        <label>Jenis Playstation (bisa memilih lebih dari satu)</label>
+                        <div class="playstation-selection">
                             @foreach ($playstations as $playstation)
-                                @if (old('playstation_id', $device->playstation_id) === $playstation->id)
-                                    <option value="{{ $playstation->id }}" selected>{{ $playstation->nama }}</option>
-                                @else
-                                    <option value="{{ $playstation->id }}">{{ $playstation->nama }}</option>
-                                @endif
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="playstation_ids[]" value="{{ $playstation->id }}" id="playstation_{{ $playstation->id }}"
+                                        @if(in_array($playstation->id, old('playstation_ids', $device->playstations->pluck('id')->toArray())))
+                                            checked
+                                        @endif>
+                                    <label class="form-check-label" for="playstation_{{ $playstation->id }}">
+                                        {{ $playstation->nama }}
+                                    </label>
+                                </div>
                             @endforeach
-                        </select>
+                        </div>
+                        <small class="text-muted">Pilih satu atau lebih jenis PlayStation untuk perangkat ini</small>
                     </div>
                     <div class="mb-3">
                         <label for="status">Jenis Playstation</label>

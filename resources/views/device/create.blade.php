@@ -4,6 +4,23 @@
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">{{ $title }}</h1>
     </div>
+    
+    @if ($errors->any())
+        <div class="alert alert-danger">
+            <ul class="mb-0">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+    
+    @if(session('error'))
+        <div class="alert alert-danger">
+            {{ session('error') }}
+        </div>
+    @endif
+    
     <div class="col-md-6">
         <div class="card shadow mb-4">
             <!-- Card Header - Dropdown -->
@@ -28,12 +45,29 @@
                         @enderror
                     </div>
                     <div class="mb-3">
-                        <label for="playstation_id">Jenis Playstation</label>
-                        <select class="form-control" id="playstation_id" name="playstation_id">
-                            @foreach ($plays as $play)
-                                <option value="{{ $play->id }}">{{ $play->nama }}</option>
-                            @endforeach
-                        </select>
+                        <label>Jenis Playstation (bisa memilih lebih dari satu)</label>
+                        @if($plays->count() > 0)
+                            <div class="playstation-selection">
+                                @foreach ($plays as $play)
+                                    <div class="form-check">
+                                        <input class="form-check-input @error('playstation_ids.*') is-invalid @enderror" type="checkbox" name="playstation_ids[]" value="{{ $play->id }}" id="playstation_{{ $play->id }}">
+                                        <label class="form-check-label" for="playstation_{{ $play->id }}">
+                                            {{ $play->nama }}
+                                        </label>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="alert alert-warning">
+                                Tidak ada data PlayStation yang tersedia. Silakan tambahkan PlayStation terlebih dahulu.
+                            </div>
+                        @endif
+                        @error('playstation_ids')
+                            <div class="invalid-feedback d-block">
+                                {{ $message }}
+                            </div>
+                        @enderror
+                        <small class="text-muted">Pilih satu atau lebih jenis PlayStation untuk perangkat ini</small>
                     </div>
                     <button class="btn btn-primary btn-sm" type="submit">Submit</button>
                 </form>

@@ -28,7 +28,7 @@
                         @enderror
                     </div>
                     <div class="mb-3">
-                        <label for="harga" class="form-label ">Harga</label>
+                        <label for="harga" class="form-label ">Harga Dasar</label>
                         <input type="number" class="form-control @error('harga') is-invalid @enderror"
                             id="harga" name="harga" required autofocus
                             value="{{ old('harga', $play->harga) }}">

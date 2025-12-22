@@ -38,9 +38,22 @@ class CustomPackage extends Model
             ->withTimestamps();
     }
 
+    public function devices()
+    {
+        return $this->belongsToMany(Playstation::class, 'custom_package_playstation')
+            ->withPivot('lama_main')
+            ->withTimestamps();
+    }
+
     public function priceGroup()
     {
         return $this->belongsTo(PriceGroup::class);
+    }
+
+    public function priceGroups()
+    {
+        return $this->belongsToMany(PriceGroup::class, 'custom_package_price_group')
+            ->withTimestamps();
     }
 
     /**

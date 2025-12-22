@@ -12,7 +12,14 @@ class CustomPackageController extends Controller
 {
     public function index()
     {
-        $packages = CustomPackage::with(['playstations', 'fnbs', 'priceGroup'])->get();
+        $packages = CustomPackage::with(['playstations', 'fnbs', 'priceGroups'])->get();
+        
+        // Enhance packages with price group names from their F&B items
+        $packages->each(function($package) {
+            $priceGroupIds = $package->fnbs->pluck('price_group_id')->unique()->filter();
+            $package->price_group_names = \App\Models\PriceGroup::whereIn('id', $priceGroupIds)->pluck('nama')->toArray();
+        });
+        
         return view('custom-package.index', [
             'title' => 'Custom Paket',
             'active' => 'custom-package',
@@ -40,10 +47,11 @@ class CustomPackageController extends Controller
             'nama_paket' => 'required|string|max:255',
             'harga_total' => 'required|numeric|min:0',
             'deskripsi' => 'nullable|string',
-            'price_group_id' => 'nullable|exists:price_groups,id',
+            'price_group_ids' => 'nullable|array',
+            'price_group_ids.*' => 'exists:price_groups,id',
             'playstations' => 'required|array|min:1',
             'playstations.*.id' => 'required|exists:playstations,id',
-            'playstations.*.lama_main' => 'required|integer|min:1',
+            'playstations.*.lama_main' => 'required|numeric|min:0.5',
             'fnbs' => 'array',
             'fnbs.*.id' => 'exists:fnbs,id',
             'fnbs.*.quantity' => 'integer|min:1',
@@ -53,15 +61,20 @@ class CustomPackageController extends Controller
             'nama_paket' => $request->nama_paket,
             'harga_total' => $request->harga_total,
             'deskripsi' => $request->deskripsi,
-            'price_group_id' => $request->price_group_id,
+            'price_group_id' => $request->price_group_ids ? $request->price_group_ids[0] : null,
             'is_active' => true,
         ]);
 
-        // Attach playstations
+        // Attach price groups
+        if ($request->has('price_group_ids')) {
+            $package->priceGroups()->sync($request->price_group_ids);
+        }
+
+        // Attach playstations (convert hours to minutes for storage)
         if ($request->has('playstations')) {
             foreach ($request->playstations as $playstation) {
                 $package->playstations()->attach($playstation['id'], [
-                    'lama_main' => $playstation['lama_main']
+                    'lama_main' => $playstation['lama_main'] * 60 // Convert hours to minutes
                 ]);
             }
         }
@@ -79,7 +92,11 @@ class CustomPackageController extends Controller
 
     public function show($id)
     {
-        $package = CustomPackage::with(['playstations', 'fnbs'])->findOrFail($id);
+        $package = CustomPackage::with(['playstations', 'fnbs', 'priceGroups'])->findOrFail($id);
+        
+        // Get price group names from F&B items
+        $priceGroupIds = $package->fnbs->pluck('price_group_id')->unique()->filter();
+        $package->price_group_names = \App\Models\PriceGroup::whereIn('id', $priceGroupIds)->pluck('nama')->toArray();
         
         // Check if this is an API request
         if (request()->expectsJson()) {
@@ -95,7 +112,7 @@ class CustomPackageController extends Controller
 
     public function edit($id)
     {
-        $package = CustomPackage::with(['playstations', 'fnbs', 'priceGroup'])->findOrFail($id);
+        $package = CustomPackage::with(['playstations', 'fnbs', 'priceGroups'])->findOrFail($id);
         $playstations = Playstation::all();
         $fnbs = Fnb::all();
         $priceGroups = \App\Models\PriceGroup::all();
@@ -117,7 +134,9 @@ class CustomPackageController extends Controller
             'deskripsi' => 'nullable|string',
             'playstations' => 'required|array|min:1',
             'playstations.*.id' => 'required|exists:playstations,id',
-            'playstations.*.lama_main' => 'required|integer|min:1',
+            'playstations.*.lama_main' => 'required|numeric|min:0.5',
+            'price_group_ids' => 'nullable|array',
+            'price_group_ids.*' => 'exists:price_groups,id',
             'fnbs' => 'array',
             'fnbs.*.id' => 'exists:fnbs,id',
             'fnbs.*.quantity' => 'integer|min:1',
@@ -128,12 +147,20 @@ class CustomPackageController extends Controller
             'nama_paket' => $request->nama_paket,
             'harga_total' => $request->harga_total,
             'deskripsi' => $request->deskripsi,
+            'price_group_id' => $request->price_group_ids ? $request->price_group_ids[0] : null,
         ]);
 
-        // Sync playstations
+        // Sync price groups
+        if ($request->has('price_group_ids')) {
+            $package->priceGroups()->sync($request->price_group_ids);
+        } else {
+            $package->priceGroups()->sync([]);
+        }
+
+        // Sync playstations (convert hours to minutes for storage)
         $playstationData = [];
         foreach ($request->playstations as $playstation) {
-            $playstationData[$playstation['id']] = ['lama_main' => $playstation['lama_main']];
+            $playstationData[$playstation['id']] = ['lama_main' => $playstation['lama_main'] * 60]; // Convert hours to minutes
         }
         $package->playstations()->sync($playstationData);
 

@@ -51,24 +51,38 @@
                             <td>Rp {{ number_format($package->harga_total, 0, ',', '.') }}</td>
                             <td>
                                 @foreach ($package->playstations as $playstation)
-                                    <span class="badge badge-info">{{ $playstation->nama }} - {{ $playstation->pivot->lama_main }} menit</span><br>
+                                    <span class="badge badge-info">{{ $playstation->nama }} - {{ number_format($playstation->pivot->lama_main / 60, 1) }} jam</span><br>
                                 @endforeach
                             </td>
                             <td>
-                                @if($package->priceGroup)
+                                @if(!empty($package->price_group_names))
+                                    <strong>Kelompok:</strong><br>
+                                    @foreach($package->price_group_names as $groupName)
+                                        <span class="badge badge-info">{{ $groupName }}</span><br>
+                                    @endforeach
+                                    <br>
+                                    @if($package->fnbs->count() > 0)
+                                        <strong>F&B:</strong><br>
+                                        @foreach ($package->fnbs as $fnb)
+                                            <span class="badge badge-success">{{ $fnb->nama }}</span><br>
+                                        @endforeach
+                                    @else
+                                        <em>Tidak ada F&B</em>
+                                    @endif
+                                @elseif($package->priceGroup)
                                     <strong>Kelompok: {{ $package->priceGroup->nama }}</strong><br>
                                     @if($package->fnbs->count() > 0)
                                         @foreach ($package->fnbs as $fnb)
-                                            <span class="badge badge-success">{{ $fnb->nama }} x{{ $fnb->pivot->quantity }}</span><br>
+                                            <span class="badge badge-success">{{ $fnb->nama }}</span><br>
                                         @endforeach
                                     @else
                                         <em>Tidak ada F&B</em>
                                     @endif
                                 @else
-                                    <em>Tidak ada kelompok harga</em><br>
                                     @if($package->fnbs->count() > 0)
+                                        <strong>F&B Tersedia:</strong><br>
                                         @foreach ($package->fnbs as $fnb)
-                                            <span class="badge badge-success">{{ $fnb->nama }} x{{ $fnb->pivot->quantity }}</span><br>
+                                            <span class="badge badge-success">{{ $fnb->nama }}</span><br>
                                         @endforeach
                                     @else
                                         <em>Tidak ada F&B</em>

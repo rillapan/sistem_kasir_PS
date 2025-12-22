@@ -44,16 +44,26 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="price_group_id">Kelompok Harga (Opsional)</label>
-                    <select class="form-control" id="price_group_id" name="price_group_id" onchange="filterFnBsByPriceGroup()">
-                        <option value="">Pilih Kelompok Harga</option>
-                        @foreach ($priceGroups as $priceGroup)
-                            <option value="{{ $priceGroup->id }}" {{ old('price_group_id') == $priceGroup->id ? 'selected' : '' }}>
-                                {{ $priceGroup->nama }} - Rp {{ number_format($priceGroup->harga, 0, ',', '.') }}
-                            </option>
-                        @endforeach
-                    </select>
-                    <small class="text-muted">Jika dipilih, FnB akan difilter berdasarkan kelompok harga ini</small>
+                    <label for="price_group_ids">Kelompok Harga Fnb</label>
+                    <div class="price-groups-container">
+                        <div class="price-group-item row mb-2">
+                            <div class="col-md-10">
+                                <select class="form-control price-group-select" name="price_group_ids[0]" onchange="filterFnBsByPriceGroups()">
+                                    <option value="">Pilih Kelompok Harga</option>
+                                    @foreach ($priceGroups as $priceGroup)
+                                        <option value="{{ $priceGroup->id }}" {{ old('price_group_ids.0') == $priceGroup->id ? 'selected' : '' }}>
+                                            {{ $priceGroup->nama }} - Rp {{ number_format($priceGroup->harga, 0, ',', '.') }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-danger btn-sm remove-price-group" style="display: none;">Hapus</button>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-sm" id="addPriceGroup">Tambah Kelompok Harga</button>
+                    <small class="text-muted">Pilih satu atau lebih kelompok harga untuk menampilkan F&B yang tersedia</small>
                 </div>
 
                 <hr>
@@ -69,7 +79,7 @@
                             </select>
                         </div>
                         <div class="col-md-5">
-                            <input type="number" class="form-control" name="playstations[0][lama_main]" placeholder="Lama Main (menit)" min="1" required>
+                            <input type="number" class="form-control" name="playstations[0][lama_main]" placeholder="Lama Main (jam)" min="0.5" step="0.5" required>
                         </div>
                         <div class="col-md-2">
                             <button type="button" class="btn btn-danger btn-sm remove-device" style="display: none;">Hapus</button>
@@ -104,6 +114,72 @@
     <script>
         let deviceIndex = 1;
         let fnbIndex = 1;
+        let priceGroupIndex = 1;
+
+        // Price group management
+        document.getElementById('addPriceGroup').addEventListener('click', function() {
+            const container = document.querySelector('.price-groups-container');
+            const priceGroupItem = document.createElement('div');
+            priceGroupItem.className = 'price-group-item row mb-2';
+            priceGroupItem.innerHTML = `
+                <div class="col-md-10">
+                    <select class="form-control price-group-select" name="price_group_ids[${priceGroupIndex}]" onchange="filterFnBsByPriceGroups()">
+                        <option value="">Pilih Kelompok Harga</option>
+                        @foreach ($priceGroups as $priceGroup)
+                            <option value="{{ $priceGroup->id }}">{{ $priceGroup->nama }} - Rp {{ number_format($priceGroup->harga, 0, ',', '.') }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-danger btn-sm remove-price-group">Hapus</button>
+                </div>
+            `;
+            container.appendChild(priceGroupItem);
+            priceGroupIndex++;
+            updatePriceGroupRemoveButtons();
+            updatePriceGroupSelectOptions();
+        });
+
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('remove-price-group')) {
+                e.target.closest('.price-group-item').remove();
+                updatePriceGroupRemoveButtons();
+                updatePriceGroupSelectOptions();
+                filterFnBsByPriceGroups();
+            }
+        });
+
+        function updatePriceGroupRemoveButtons() {
+            const priceGroupItems = document.querySelectorAll('.price-group-item');
+            priceGroupItems.forEach((item, index) => {
+                const removeButton = item.querySelector('.remove-price-group');
+                if (removeButton) {
+                    removeButton.style.display = priceGroupItems.length > 1 ? 'block' : 'none';
+                }
+            });
+        }
+
+        function updatePriceGroupSelectOptions() {
+            const selectedValues = Array.from(document.querySelectorAll('.price-group-select'))
+                .map(select => select.value)
+                .filter(value => value !== '');
+            
+            document.querySelectorAll('.price-group-select').forEach(select => {
+                Array.from(select.options).forEach(option => {
+                    if (option.value !== '' && selectedValues.includes(option.value) && option.value !== select.value) {
+                        option.disabled = true;
+                    } else {
+                        option.disabled = false;
+                    }
+                });
+            });
+        }
+
+        document.addEventListener('change', function(e) {
+            if (e.target.classList.contains('price-group-select')) {
+                updatePriceGroupSelectOptions();
+            }
+        });
 
         document.getElementById('addDevice').addEventListener('click', function() {
             const container = document.getElementById('devicesContainer');
@@ -119,7 +195,7 @@
                     </select>
                 </div>
                 <div class="col-md-5">
-                    <input type="number" class="form-control" name="playstations[${deviceIndex}][lama_main]" placeholder="Lama Main (menit)" min="1" required>
+                    <input type="number" class="form-control" name="playstations[${deviceIndex}][lama_main]" placeholder="Lama Main (jam)" min="0.5" step="0.5" required>
                 </div>
                 <div class="col-md-2">
                     <button type="button" class="btn btn-danger btn-sm remove-device">Hapus</button>
@@ -160,23 +236,27 @@
             }
         });
 
-        // FnB filtering by price group - display F&B items from selected price group
-        function filterFnBsByPriceGroup() {
-            const priceGroupId = document.getElementById('price_group_id').value;
+        // FnB filtering by price groups - display F&B items from selected price groups
+        function filterFnBsByPriceGroups() {
+            const priceGroupSelects = document.querySelectorAll('.price-group-select');
+            const selectedPriceGroupIds = Array.from(priceGroupSelects)
+                .map(select => select.value)
+                .filter(value => value !== '');
+            
             const fnbSelectionInfo = document.getElementById('fnb-selection-info');
             const fnbItemsDisplay = document.getElementById('fnb-items-display');
 
-            if (!priceGroupId) {
+            if (selectedPriceGroupIds.length === 0) {
                 // If no price group selected, show info message
                 fnbSelectionInfo.textContent = 'Pilih kelompok harga di atas untuk menampilkan F&B yang tersedia';
                 fnbItemsDisplay.innerHTML = '';
                 return;
             }
 
-            // Fetch FnBs filtered by price group
-            axios.get('/api/get-fnbs-by-price-group', {
+            // Fetch FnBs filtered by multiple price groups
+            axios.get('/api/get-fnbs-by-price-groups', {
                 params: {
-                    price_group_id: priceGroupId
+                    price_group_ids: selectedPriceGroupIds
                 }
             })
             .then(function(response) {
@@ -184,10 +264,10 @@
                 console.log('Filtered FnBs:', filteredFnbs);
 
                 // Update info text
-                fnbSelectionInfo.innerHTML = `Menampilkan ${filteredFnbs.length} item F&B dari kelompok harga yang dipilih`;
+                fnbSelectionInfo.innerHTML = `Menampilkan ${filteredFnbs.length} item F&B dari ${selectedPriceGroupIds.length} kelompok harga yang dipilih`;
 
                 // Display the F&B items
-                displayAvailableFnbs(filteredFnbs, priceGroupId);
+                displayAvailableFnbs(filteredFnbs);
             })
             .catch(function(error) {
                 console.error('Error filtering FnBs:', error);
@@ -196,7 +276,7 @@
             });
         }
 
-        function displayAvailableFnbs(fnbs, priceGroupId) {
+        function displayAvailableFnbs(fnbs) {
             const container = document.getElementById('fnb-items-display');
 
             if (fnbs.length === 0) {
@@ -259,19 +339,21 @@
             }
         }
 
-        // Initialize F&B filtering if a price group is already selected (e.g., after form validation error)
+        // Initialize F&B filtering if price groups are already selected (e.g., after form validation error)
         document.addEventListener('DOMContentLoaded', function() {
-            const priceGroupId = document.getElementById('price_group_id').value;
-            if (priceGroupId) {
-                filterFnBsByPriceGroup();
+            const priceGroupSelects = document.querySelectorAll('.price-group-select');
+            const hasSelectedGroups = Array.from(priceGroupSelects).some(select => select.value !== '');
+            if (hasSelectedGroups) {
+                filterFnBsByPriceGroups();
             }
         });
 
         // Also trigger when the page loads after form submission if needed
         window.onload = function() {
-            const priceGroupId = document.getElementById('price_group_id').value;
-            if (priceGroupId) {
-                filterFnBsByPriceGroup();
+            const priceGroupSelects = document.querySelectorAll('.price-group-select');
+            const hasSelectedGroups = Array.from(priceGroupSelects).some(select => select.value !== '');
+            if (hasSelectedGroups) {
+                filterFnBsByPriceGroups();
             }
         };
     </script>

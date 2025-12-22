@@ -14,13 +14,7 @@
         </div>
     @endif
 
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">{{ $title }}</h1>
-        <div>
-            <a href="{{ route('fnb.laporan.excel', request()->query()) }}" class="btn btn-success btn-sm">Export Excel</a>
-            <a href="{{ route('fnb.laporan.pdf', request()->query()) }}" class="btn btn-danger btn-sm">Export PDF</a>
-        </div>
-    </div>
+
 
     <!-- Filters -->
     <div class="card shadow mb-4">

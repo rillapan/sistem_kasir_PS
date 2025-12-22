@@ -21,8 +21,10 @@ class DeviceController extends Controller
     public function byPlaystation($playstationId)
     {
         $playstation = Playstation::findOrFail($playstationId);
-        $devices = Device::where('playstation_id', $playstationId)
-            ->with('playstation')
+        $devices = Device::whereHas('playstations', function ($query) use ($playstationId) {
+            $query->where('playstations.id', $playstationId);
+        })
+            ->with(['playstations', 'playstation'])
             ->paginate(10);
 
         $title = 'Devices - ' . $playstation->nama;
@@ -112,14 +114,14 @@ class DeviceController extends Controller
             $device->update(['status' => $newStatus]);
         }
 
-        $latestTransactionsSub = Transaction::select('device_id', DB::raw('MAX(created_at) as latest_transaction_at'))
+        $latestTransactionsSub = Transaction::select('device_id', \DB::raw('MAX(created_at) as latest_transaction_at'))
             ->groupBy('device_id');
 
         $devices = Device::select('devices.*')
             ->leftJoinSub($latestTransactionsSub, 'latest_transactions', 'devices.id', '=', 'latest_transactions.device_id')
             ->orderByRaw('CASE WHEN devices.status = "Digunakan" THEN 0 ELSE 1 END')
             ->orderBy('latest_transactions.latest_transaction_at', 'desc')
-            ->with('playstation')
+            ->with('playstations')
             ->paginate(12);
 
         // Count devices by status
@@ -206,7 +208,7 @@ class DeviceController extends Controller
                         'id_transaksi' => $transaction->id_transaksi,
                         'nama' => $transaction->nama ?? 'Tidak tersedia',
                         'nama_perangkat' => $dev->nama,
-                        'jenis_playstation' => $dev->playstation->nama ?? 'Tidak Diketahui',
+                        'jenis_playstation' => $dev->playstation_names ?? 'Tidak Diketahui',
                         'jam_main' => $transaction->jam_main ?? 'Tidak tersedia',
                         'waktu_mulai' => $transaction->waktu_mulai,
                         'waktu_selesai' => $transaction->waktu_Selesai,
@@ -258,13 +260,28 @@ class DeviceController extends Controller
     {
         $validatedData = $request->validate([
             'nama' => 'required|min:3',
-            'playstation_id' => 'required',
+            'playstation_ids' => 'required|array|min:1',
+            'playstation_ids.*' => 'exists:playstations,id',
             'status' => 'required'
         ]);
 
-        Device::create($validatedData);
+        try {
+            // Create the device
+            $device = Device::create([
+                'nama' => $validatedData['nama'],
+                'status' => $validatedData['status'],
+                'playstation_id' => $validatedData['playstation_ids'][0] // Keep for backward compatibility
+            ]);
 
-        return redirect('device')->with('success', 'Data perangkat berhasil ditambahkan.');
+            // Attach the device to multiple PlayStations
+            $device->playstations()->attach($validatedData['playstation_ids']);
+
+            return redirect('device')->with('success', 'Data perangkat berhasil ditambahkan.');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Terjadi kesalahan saat menyimpan perangkat: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -286,7 +303,7 @@ class DeviceController extends Controller
      */
     public function edit($id)
     {
-        $device = Device::find($id);
+        $device = Device::with('playstations')->find($id);
         $playstation = Playstation::all();
         return view('device.edit', [
             'title' => 'Edit Perangkat',
@@ -307,13 +324,24 @@ class DeviceController extends Controller
     {
         $validatedData = $request->validate([
             'nama' => 'required|min:3',
-            'playstation_id' => 'required',
+            'playstation_ids' => 'required|array|min:1',
+            'playstation_ids.*' => 'exists:playstations,id',
             'status' => 'required'
         ]);
 
-        Device::where('id', $id)->update($validatedData);
+        $device = Device::find($id);
+        
+        // Update device basic info
+        $device->update([
+            'nama' => $validatedData['nama'],
+            'status' => $validatedData['status'],
+            'playstation_id' => $validatedData['playstation_ids'][0] // Keep for backward compatibility
+        ]);
 
-        return redirect('device')->with('success', 'Data perangkat berhasil ditambahkan.');
+        // Update PlayStation relationships
+        $device->playstations()->sync($validatedData['playstation_ids']);
+
+        return redirect('device')->with('success', 'Data perangkat berhasil diperbarui.');
     }
 
     /**
