@@ -49,6 +49,9 @@ class ReportController extends Controller
     public function index(Request $request)
     {
         $now = Carbon::now();
+        
+        // Get all PlayStation types for filtering
+        $playstationTypes = \App\Models\Playstation::all();
 
         // Only include paid transactions in income calculations
         $dailyIncome = Transaction::where('payment_status', 'paid')
@@ -66,20 +69,48 @@ class ReportController extends Controller
 
         // Resolve dates
         list($startDate, $endDate, $period) = $this->getDatesFromRequest($request);
+        
+        // Get selected PlayStation types from request
+        $selectedPlaystationIds = $request->input('playstation_types', []);
 
         $periodIncome = 0;
         $chartData = [];
         $chartLabels = [];
+        $chartDatasets = []; // For multiple datasets (one per PlayStation type)
 
         if ($startDate && $endDate) {
             $start = Carbon::parse($startDate)->startOfDay();
             $end = Carbon::parse($endDate)->endOfDay();
 
-            $periodTransactions = Transaction::where('payment_status', 'paid')
+            // Build query with PlayStation type filter if selected
+            $query = Transaction::where('payment_status', 'paid')
                 ->whereBetween('created_at', [$start, $end])
-                ->get();
+                ->with('device.playstation'); // Eager load relationships
+                
+            if (!empty($selectedPlaystationIds)) {
+                // Filter by PlayStation through device relationship
+                $query->whereHas('device', function($q) use ($selectedPlaystationIds) {
+                    $q->whereIn('playstation_id', $selectedPlaystationIds);
+                });
+            }
+            
+            $periodTransactions = $query->get();
 
             $periodIncome = $periodTransactions->sum('total');
+            
+            // Debug: Log data structure
+            \Log::info('Period Transactions Count: ' . $periodTransactions->count());
+            \Log::info('Selected PlayStation IDs: ' . json_encode($selectedPlaystationIds));
+            \Log::info('Period Transactions: ' . $periodTransactions->take(3)->map(function($t) {
+                return [
+                    'id' => $t->id_transaksi,
+                    'device_id' => $t->device_id,
+                    'playstation_id' => $t->playstation_id,
+                    'device_playstation_id' => $t->device->playstation_id ?? null,
+                    'total' => $t->total,
+                    'created_at' => $t->created_at
+                ];
+            }));
 
             // Construct Chart Data based on Period
             switch ($period) {
@@ -88,27 +119,97 @@ class ReportController extends Controller
                     for ($i = 0; $i < 24; $i++) {
                         $label = str_pad($i, 2, '0', STR_PAD_LEFT) . ':00';
                         $chartLabels[] = $label;
-                        $tempData[$label] = 0;
                     }
-                    foreach ($periodTransactions as $t) {
-                        $label = $t->created_at->format('H:00');
-                        if (isset($tempData[$label])) {
-                            $tempData[$label] += $t->total;
+                    
+                    if (!empty($selectedPlaystationIds)) {
+                        // Create dataset for each selected PlayStation type
+                        $colors = ['rgba(78, 115, 223, 1)', 'rgba(28, 200, 138, 1)', 'rgba(255, 99, 132, 1)', 'rgba(255, 206, 86, 1)', 'rgba(54, 162, 235, 1)'];
+                        $bgColors = ['rgba(78, 115, 223, 0.05)', 'rgba(28, 200, 138, 0.05)', 'rgba(255, 99, 132, 0.05)', 'rgba(255, 206, 86, 0.05)', 'rgba(54, 162, 235, 0.05)'];
+                        
+                        foreach ($selectedPlaystationIds as $index => $psId) {
+                            $playstation = $playstationTypes->find($psId);
+                            $tempData = array_fill(0, 24, 0);
+                            
+                            $psTransactions = $periodTransactions->filter(function($t) use ($psId) {
+                                return $t->device && $t->device->playstation_id == $psId;
+                            });
+                            foreach ($psTransactions as $t) {
+                                $hour = (int)$t->created_at->format('H');
+                                $tempData[$hour] += $t->total;
+                            }
+                            
+                            $chartDatasets[] = [
+                                'label' => $playstation ? $playstation->nama : 'Playstation ' . $psId,
+                                'data' => $tempData,
+                                'borderColor' => $colors[$index % count($colors)],
+                                'backgroundColor' => $bgColors[$index % count($bgColors)],
+                                'lineTension' => 0.3,
+                                'pointRadius' => 3,
+                                'pointBackgroundColor' => $colors[$index % count($colors)],
+                                'pointBorderColor' => $colors[$index % count($colors)],
+                                'pointHoverRadius' => 3,
+                                'pointHoverBackgroundColor' => $colors[$index % count($colors)],
+                                'pointHoverBorderColor' => $colors[$index % count($colors)],
+                                'pointHitRadius' => 10,
+                                'pointBorderWidth' => 2,
+                            ];
                         }
+                    } else {
+                        // Single dataset for all types
+                        $tempData = array_fill(0, 24, 0);
+                        foreach ($periodTransactions as $t) {
+                            $hour = (int)$t->created_at->format('H');
+                            $tempData[$hour] += $t->total;
+                        }
+                        $chartData = $tempData;
                     }
-                    $chartData = array_values($tempData);
                     break;
 
                 case 'this_week':
                     // Group by Day (Senin - Minggu)
                     $days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
                     $chartLabels = $days;
-                    $chartData = array_fill(0, 7, 0);
                     
-                    foreach ($periodTransactions as $t) {
-                        // dayOfWeekIso returns 1 (Monday) to 7 (Sunday)
-                        $index = $t->created_at->dayOfWeekIso - 1; 
-                        $chartData[$index] += $t->total;
+                    if (!empty($selectedPlaystationIds)) {
+                        // Create dataset for each selected PlayStation type
+                        $colors = ['rgba(78, 115, 223, 1)', 'rgba(28, 200, 138, 1)', 'rgba(255, 99, 132, 1)', 'rgba(255, 206, 86, 1)', 'rgba(54, 162, 235, 1)'];
+                        $bgColors = ['rgba(78, 115, 223, 0.05)', 'rgba(28, 200, 138, 0.05)', 'rgba(255, 99, 132, 0.05)', 'rgba(255, 206, 86, 0.05)', 'rgba(54, 162, 235, 0.05)'];
+                        
+                        foreach ($selectedPlaystationIds as $index => $psId) {
+                            $playstation = $playstationTypes->find($psId);
+                            $tempData = array_fill(0, 7, 0);
+                            
+                            $psTransactions = $periodTransactions->filter(function($t) use ($psId) {
+                                return $t->device && $t->device->playstation_id == $psId;
+                            });
+                            foreach ($psTransactions as $t) {
+                                $dayIndex = $t->created_at->dayOfWeekIso - 1; // 1-7 becomes 0-6
+                                $tempData[$dayIndex] += $t->total;
+                            }
+                            
+                            $chartDatasets[] = [
+                                'label' => $playstation ? $playstation->nama : 'Playstation ' . $psId,
+                                'data' => $tempData,
+                                'borderColor' => $colors[$index % count($colors)],
+                                'backgroundColor' => $bgColors[$index % count($bgColors)],
+                                'lineTension' => 0.3,
+                                'pointRadius' => 3,
+                                'pointBackgroundColor' => $colors[$index % count($colors)],
+                                'pointBorderColor' => $colors[$index % count($colors)],
+                                'pointHoverRadius' => 3,
+                                'pointHoverBackgroundColor' => $colors[$index % count($colors)],
+                                'pointHoverBorderColor' => $colors[$index % count($colors)],
+                                'pointHitRadius' => 10,
+                                'pointBorderWidth' => 2,
+                            ];
+                        }
+                    } else {
+                        // Single dataset for all types
+                        $chartData = array_fill(0, 7, 0);
+                        foreach ($periodTransactions as $t) {
+                            $index = $t->created_at->dayOfWeekIso - 1; 
+                            $chartData[$index] += $t->total;
+                        }
                     }
                     break;
 
@@ -117,22 +218,51 @@ class ReportController extends Controller
                     for ($i = 1; $i <= 5; $i++) {
                         $label = 'Minggu ke-' . $i;
                         $chartLabels[] = $label;
-                        $tempData[$i] = 0;
                     }
                     
-                    foreach ($periodTransactions as $t) {
-                        $weekNum = $t->created_at->weekOfMonth;
-                        // Use weekOfMonth directly. If it goes up to 6, we might need adjustments, 
-                        // but normally 1-5 covers it.
-                        if (isset($tempData[$weekNum])) {
-                            $tempData[$weekNum] += $t->total;
-                        } elseif ($weekNum > 5) {
-                            // Merge overflow into week 5 or create week 6? Lets strict to 5 for now 
-                            // or dynamic. Better dynamic if > 5.
-                             $tempData[5] += $t->total; 
+                    if (!empty($selectedPlaystationIds)) {
+                        // Create dataset for each selected PlayStation type
+                        $colors = ['rgba(78, 115, 223, 1)', 'rgba(28, 200, 138, 1)', 'rgba(255, 99, 132, 1)', 'rgba(255, 206, 86, 1)', 'rgba(54, 162, 235, 1)'];
+                        $bgColors = ['rgba(78, 115, 223, 0.05)', 'rgba(28, 200, 138, 0.05)', 'rgba(255, 99, 132, 0.05)', 'rgba(255, 206, 86, 0.05)', 'rgba(54, 162, 235, 0.05)'];
+                        
+                        foreach ($selectedPlaystationIds as $index => $psId) {
+                            $playstation = $playstationTypes->find($psId);
+                            $tempData = array_fill(0, 5, 0);
+                            
+                            $psTransactions = $periodTransactions->filter(function($t) use ($psId) {
+                                return $t->device && $t->device->playstation_id == $psId;
+                            });
+                            foreach ($psTransactions as $t) {
+                                $weekNum = $t->created_at->weekOfMonth;
+                                $weekIndex = ($weekNum > 5) ? 4 : $weekNum - 1; // 1-5 becomes 0-4
+                                $tempData[$weekIndex] += $t->total;
+                            }
+                            
+                            $chartDatasets[] = [
+                                'label' => $playstation ? $playstation->nama : 'Playstation ' . $psId,
+                                'data' => $tempData,
+                                'borderColor' => $colors[$index % count($colors)],
+                                'backgroundColor' => $bgColors[$index % count($bgColors)],
+                                'lineTension' => 0.3,
+                                'pointRadius' => 3,
+                                'pointBackgroundColor' => $colors[$index % count($colors)],
+                                'pointBorderColor' => $colors[$index % count($colors)],
+                                'pointHoverRadius' => 3,
+                                'pointHoverBackgroundColor' => $colors[$index % count($colors)],
+                                'pointHoverBorderColor' => $colors[$index % count($colors)],
+                                'pointHitRadius' => 10,
+                                'pointBorderWidth' => 2,
+                            ];
+                        }
+                    } else {
+                        // Single dataset for all types
+                        $chartData = array_fill(0, 5, 0);
+                        foreach ($periodTransactions as $t) {
+                            $weekNum = $t->created_at->weekOfMonth;
+                            $weekIndex = ($weekNum > 5) ? 4 : $weekNum - 1; // 1-5 becomes 0-4
+                            $chartData[$weekIndex] += $t->total;
                         }
                     }
-                    $chartData = array_values($tempData);
                     break;
 
                 case 'this_year':
@@ -142,23 +272,105 @@ class ReportController extends Controller
                         'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
                     ];
                     $chartLabels = $months;
-                    $chartData = array_fill(0, 12, 0);
-
-                    foreach ($periodTransactions as $t) {
-                        $index = $t->created_at->month - 1; // 1-12 becomes 0-11
-                        $chartData[$index] += $t->total;
+                    
+                    if (!empty($selectedPlaystationIds)) {
+                        // Create dataset for each selected PlayStation type
+                        $colors = ['rgba(78, 115, 223, 1)', 'rgba(28, 200, 138, 1)', 'rgba(255, 99, 132, 1)', 'rgba(255, 206, 86, 1)', 'rgba(54, 162, 235, 1)'];
+                        $bgColors = ['rgba(78, 115, 223, 0.05)', 'rgba(28, 200, 138, 0.05)', 'rgba(255, 99, 132, 0.05)', 'rgba(255, 206, 86, 0.05)', 'rgba(54, 162, 235, 0.05)'];
+                        
+                        foreach ($selectedPlaystationIds as $index => $psId) {
+                            $playstation = $playstationTypes->find($psId);
+                            $tempData = array_fill(0, 12, 0);
+                            
+                            $psTransactions = $periodTransactions->filter(function($t) use ($psId) {
+                                return $t->device && $t->device->playstation_id == $psId;
+                            });
+                            foreach ($psTransactions as $t) {
+                                $monthIndex = $t->created_at->month - 1; // 1-12 becomes 0-11
+                                $tempData[$monthIndex] += $t->total;
+                            }
+                            
+                            $chartDatasets[] = [
+                                'label' => $playstation ? $playstation->nama : 'Playstation ' . $psId,
+                                'data' => $tempData,
+                                'borderColor' => $colors[$index % count($colors)],
+                                'backgroundColor' => $bgColors[$index % count($bgColors)],
+                                'lineTension' => 0.3,
+                                'pointRadius' => 3,
+                                'pointBackgroundColor' => $colors[$index % count($colors)],
+                                'pointBorderColor' => $colors[$index % count($colors)],
+                                'pointHoverRadius' => 3,
+                                'pointHoverBackgroundColor' => $colors[$index % count($colors)],
+                                'pointHoverBorderColor' => $colors[$index % count($colors)],
+                                'pointHitRadius' => 10,
+                                'pointBorderWidth' => 2,
+                            ];
+                        }
+                    } else {
+                        // Single dataset for all types
+                        $chartData = array_fill(0, 12, 0);
+                        foreach ($periodTransactions as $t) {
+                            $index = $t->created_at->month - 1; // 1-12 becomes 0-11
+                            $chartData[$index] += $t->total;
+                        }
                     }
                     break;
 
                 case 'custom':
                 default:
                     // Group by Date (Y-m-d)
-                    $dailyTotals = $periodTransactions->groupBy(function ($transaction) {
-                        return $transaction->created_at->format('Y-m-d');
-                    })->map->sum('total');
+                    if (!empty($selectedPlaystationIds)) {
+                        // Create dataset for each selected PlayStation type
+                        $colors = ['rgba(78, 115, 223, 1)', 'rgba(28, 200, 138, 1)', 'rgba(255, 99, 132, 1)', 'rgba(255, 206, 86, 1)', 'rgba(54, 162, 235, 1)'];
+                        $bgColors = ['rgba(78, 115, 223, 0.05)', 'rgba(28, 200, 138, 0.05)', 'rgba(255, 99, 132, 0.05)', 'rgba(255, 206, 86, 0.05)', 'rgba(54, 162, 235, 0.05)'];
+                        
+                        // Get all unique dates first
+                        $allDates = $periodTransactions->map(function ($transaction) {
+                            return $transaction->created_at->format('Y-m-d');
+                        })->unique()->sort()->values();
+                        
+                        $chartLabels = $allDates->toArray();
+                        
+                        foreach ($selectedPlaystationIds as $index => $psId) {
+                            $playstation = $playstationTypes->find($psId);
+                            $tempData = array_fill(0, count($allDates), 0);
+                            
+                            $psTransactions = $periodTransactions->filter(function($t) use ($psId) {
+                                return $t->device && $t->device->playstation_id == $psId;
+                            });
+                            foreach ($psTransactions as $t) {
+                                $date = $t->created_at->format('Y-m-d');
+                                $dateIndex = $allDates->search($date);
+                                if ($dateIndex !== false) {
+                                    $tempData[$dateIndex] += $t->total;
+                                }
+                            }
+                            
+                            $chartDatasets[] = [
+                                'label' => $playstation ? $playstation->nama : 'Playstation ' . $psId,
+                                'data' => $tempData,
+                                'borderColor' => $colors[$index % count($colors)],
+                                'backgroundColor' => $bgColors[$index % count($bgColors)],
+                                'lineTension' => 0.3,
+                                'pointRadius' => 3,
+                                'pointBackgroundColor' => $colors[$index % count($colors)],
+                                'pointBorderColor' => $colors[$index % count($colors)],
+                                'pointHoverRadius' => 3,
+                                'pointHoverBackgroundColor' => $colors[$index % count($colors)],
+                                'pointHoverBorderColor' => $colors[$index % count($colors)],
+                                'pointHitRadius' => 10,
+                                'pointBorderWidth' => 2,
+                            ];
+                        }
+                    } else {
+                        // Single dataset for all types
+                        $dailyTotals = $periodTransactions->groupBy(function ($transaction) {
+                            return $transaction->created_at->format('Y-m-d');
+                        })->map->sum('total');
 
-                    $chartLabels = $dailyTotals->keys()->toArray();
-                    $chartData = $dailyTotals->values()->toArray();
+                        $chartLabels = $dailyTotals->keys()->toArray();
+                        $chartData = $dailyTotals->values()->toArray();
+                    }
                     break;
             }
         }
@@ -175,20 +387,32 @@ class ReportController extends Controller
             'periodIncome' => $periodIncome,
             'chartLabels' => $chartLabels,
             'chartData' => $chartData,
+            'chartDatasets' => $chartDatasets,
+            'playstationTypes' => $playstationTypes,
+            'selectedPlaystationIds' => $selectedPlaystationIds,
         ]);
     }
 
     public function generatePDF(Request $request)
     {
         list($startDate, $endDate, $period) = $this->getDatesFromRequest($request);
+        $selectedPlaystationIds = $request->input('playstation_types', []);
 
         $start = Carbon::parse($startDate)->startOfDay();
         $end = Carbon::parse($endDate)->endOfDay();
 
-        $transactions = Transaction::with(['device.playstation', 'transactionFnbs.fnb', 'custom_package'])
+        $query = Transaction::with(['device.playstation', 'transactionFnbs.fnb', 'custom_package'])
             ->where('payment_status', 'paid')
-            ->whereBetween('created_at', [$start, $end])
-            ->get();
+            ->whereBetween('created_at', [$start, $end]);
+            
+        // Apply PlayStation type filter if selected
+        if (!empty($selectedPlaystationIds)) {
+            $query->whereHas('device', function($q) use ($selectedPlaystationIds) {
+                $q->whereIn('playstation_id', $selectedPlaystationIds);
+            });
+        }
+        
+        $transactions = $query->get();
         $total = $transactions->sum('total');
 
         // Daily statistics for graph-like summary
@@ -204,6 +428,7 @@ class ReportController extends Controller
             'endDate' => $endDate,
             'total' => $total,
             'dailyTotals' => $dailyTotals,
+            'selectedPlaystationIds' => $selectedPlaystationIds,
         ]);
         return $pdf->download('laporan.pdf');
     }
@@ -211,14 +436,23 @@ class ReportController extends Controller
     public function generateExcel(Request $request)
     {
         list($startDate, $endDate, $period) = $this->getDatesFromRequest($request);
+        $selectedPlaystationIds = $request->input('playstation_types', []);
 
         $start = Carbon::parse($startDate)->startOfDay();
         $end = Carbon::parse($endDate)->endOfDay();
 
-        $transactions = Transaction::with(['device.playstation', 'transactionFnbs.fnb', 'custom_package'])
+        $query = Transaction::with(['device.playstation', 'transactionFnbs.fnb', 'custom_package'])
             ->where('payment_status', 'paid')
-            ->whereBetween('created_at', [$start, $end])
-            ->get();
+            ->whereBetween('created_at', [$start, $end]);
+            
+        // Apply PlayStation type filter if selected
+        if (!empty($selectedPlaystationIds)) {
+            $query->whereHas('device', function($q) use ($selectedPlaystationIds) {
+                $q->whereIn('playstation_id', $selectedPlaystationIds);
+            });
+        }
+        
+        $transactions = $query->get();
         $total = $transactions->sum('total');
 
         // Daily statistics for summary
@@ -229,5 +463,34 @@ class ReportController extends Controller
         $excel = Excel::download(new TransactionsExport($transactions, $startDate, $endDate, $total, $dailyTotals), 'laporan.xlsx');
 
         return $excel;
+    }
+
+    public function transactionReport(Request $request)
+    {
+        $startDateTime = $request->input('start_datetime');
+        $endDateTime = $request->input('end_datetime');
+
+        $query = Transaction::with(['device.playstation', 'user'])
+            ->where('payment_status', 'paid');
+
+        if ($startDateTime) {
+            $start = Carbon::parse($startDateTime);
+            $query->where('created_at', '>=', $start);
+        }
+
+        if ($endDateTime) {
+            $end = Carbon::parse($endDateTime);
+            $query->where('updated_at', '<=', $end);
+        }
+
+        $transactions = $query->orderBy('created_at', 'desc')->get();
+
+        return view('laporan.transaction-report', [
+            'title' => 'Laporan Transaksi',
+            'active' => 'report',
+            'transactions' => $transactions,
+            'startDateTime' => $startDateTime,
+            'endDateTime' => $endDateTime,
+        ]);
     }
 }

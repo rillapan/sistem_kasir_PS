@@ -69,6 +69,7 @@ Route::middleware(['auth', 'check_role:admin,kasir'])->group(function () {
 Route::middleware(['auth', 'check_role:admin,owner'])->group(function () {
     // Reports
     Route::get('/report', 'App\Http\Controllers\ReportController@index')->name('report');
+    Route::get('/report/transaction', 'App\Http\Controllers\ReportController@transactionReport')->name('transaction.report');
     Route::get('/generate-pdf', 'App\Http\Controllers\ReportController@generatePDF');
     Route::get('/generate-excel', 'App\Http\Controllers\ReportController@generateExcel')->name('laporan.excel');
 

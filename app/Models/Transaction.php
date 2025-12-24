@@ -19,6 +19,7 @@ class Transaction extends Model
         'nama',
         'no_telepon',
         'device_id',
+        'playstation_id',
         'user_id',
         'harga',
         'jam_main',
@@ -37,6 +38,11 @@ class Transaction extends Model
     public function device()
     {
         return $this->belongsTo(Device::class);
+    }
+
+    public function playstation()
+    {
+        return $this->belongsTo(Playstation::class);
     }
 
     public function user()

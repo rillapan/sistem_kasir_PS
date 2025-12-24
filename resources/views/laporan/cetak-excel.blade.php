@@ -36,6 +36,18 @@
             <tr>
                 <td colspan="8">
                     <p>Dari Tanggal: {{ $startDate }} Sampai: {{ $endDate }}</p>
+                    @if(isset($selectedPlaystationIds) && !empty($selectedPlaystationIds))
+                        <p>
+                            <strong>Jenis PlayStation:</strong> 
+                            @php
+                                $playstationTypes = \App\Models\Playstation::whereIn('id', $selectedPlaystationIds)->get();
+                                $psNames = $playstationTypes->pluck('nama')->implode(', ');
+                            @endphp
+                            {{ $psNames }}
+                        </p>
+                    @else
+                        <p><strong>Jenis PlayStation:</strong> Semua Jenis</p>
+                    @endif
                 </td>
             </tr>
         </tbody>

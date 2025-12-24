@@ -27,6 +27,18 @@
         Laporan Transaksi Rental Playstation
     </h3>
     <p class="mb-2">Dari Tanggal: {{ $startDate }} Sampai: {{ $endDate }}</p>
+    @if(isset($selectedPlaystationIds) && !empty($selectedPlaystationIds))
+        <p class="mb-2">
+            <strong>Jenis PlayStation:</strong> 
+            @php
+                $playstationTypes = \App\Models\Playstation::whereIn('id', $selectedPlaystationIds)->get();
+                $psNames = $playstationTypes->pluck('nama')->implode(', ');
+            @endphp
+            {{ $psNames }}
+        </p>
+    @else
+        <p class="mb-2"><strong>Jenis PlayStation:</strong> Semua Jenis</p>
+    @endif
     
     @if(isset($dailyTotals) && $dailyTotals->count() > 0)
     <h4 class="mt-4 mb-3">Statistik Pendapatan Harian</h4>

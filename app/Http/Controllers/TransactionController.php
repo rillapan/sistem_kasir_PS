@@ -285,6 +285,7 @@ class TransactionController extends Controller
             'nama' => 'required',
             'no_telepon' => 'nullable|string|max:20',
             'device_id' => 'required_if:tipe_transaksi,prepaid,postpaid,custom_package|exists:devices,id',
+            'playstation_id' => 'nullable|exists:playstations,id',
             'custom_package_id' => 'required_if:tipe_transaksi,custom_package|exists:custom_packages,id',
             'user_id' => 'nullable|exists:users,id',
             'harga' => 'required_if:tipe_transaksi,prepaid,custom_package|nullable',
@@ -297,6 +298,21 @@ class TransactionController extends Controller
             'fnbs_qty.*' => 'nullable|integer|min:1',
             'fnbs_harga.*' => 'nullable|integer|min:0'
         ]);
+
+        // Additional validation: Check if device has multiple PlayStation types and require playstation_id
+        if ($request->device_id && $request->tipe_transaksi !== 'custom_package') {
+            $device = Device::with('playstations')->find($request->device_id);
+            if ($device && $device->playstations->count() > 1) {
+                if (!$request->playstation_id) {
+                    return redirect()->back()->with('gagal', 'Silakan pilih jenis perangkat terlebih dahulu.');
+                }
+                
+                // Validate that the selected playstation_id is associated with this device
+                if (!$device->playstations()->where('playstations.id', $request->playstation_id)->exists()) {
+                    return redirect()->back()->with('gagal', 'Jenis perangkat yang dipilih tidak valid untuk perangkat ini.');
+                }
+            }
+        }
 
         $validatedData['status'] = 'user'; // Provide default value for status
         $validatedData['waktu_mulai'] = $start_time;
@@ -351,9 +367,25 @@ class TransactionController extends Controller
             $validatedData['waktu_Selesai'] = Carbon::parse($start_time)->addMinutes($totalJamMain)->format('H:i');
 
         } elseif ($request->tipe_transaksi === 'prepaid') {
-            // Check if there are custom hourly prices for this PlayStation
+            // Get device and selected PlayStation
             $device = Device::findOrFail($request->device_id);
-            $playstation = $device->playstation;
+            
+            // Use selected PlayStation if provided, otherwise fallback to default
+            if ($request->playstation_id) {
+                $playstation = Playstation::findOrFail($request->playstation_id);
+                
+                // Validate that the selected PlayStation is associated with this device
+                $isAssociated = $device->playstations()->where('playstations.id', $request->playstation_id)->exists() 
+                              || ($device->playstation_id && $device->playstation_id == $request->playstation_id);
+                
+                if (!$isAssociated) {
+                    return redirect()->back()->with('gagal', 'Playstation yang dipilih tidak terkait dengan perangkat ini.');
+                }
+            } else {
+                // Fallback to default PlayStation (backward compatibility)
+                $playstation = $device->playstation;
+            }
+            
             $hourlyPrice = $playstation->getPriceForHour($jam_main);
 
             if ($hourlyPrice !== null) {
@@ -380,6 +412,11 @@ class TransactionController extends Controller
             $validatedData['harga'] = $playstation->harga ?? 0; // Store base hourly rate for reference
             $validatedData['total'] = $totalPs + $fnbTotal;
             $validatedData['status_transaksi'] = 'sukses';
+            
+            // Store the selected PlayStation ID for reference
+            if ($request->playstation_id) {
+                $validatedData['playstation_id'] = $request->playstation_id;
+            }
         } elseif ($request->tipe_transaksi === 'postpaid') {
             // Postpaid (Lost Time) - device is now required
             $device = Device::findOrFail($request->device_id);
@@ -387,12 +424,34 @@ class TransactionController extends Controller
                 return redirect()->back()->with('gagal', 'Perangkat yang dipilih tidak tersedia.');
             }
             
+            // Use selected PlayStation if provided, otherwise fallback to default
+            if ($request->playstation_id) {
+                $playstation = Playstation::findOrFail($request->playstation_id);
+                
+                // Validate that the selected PlayStation is associated with this device
+                $isAssociated = $device->playstations()->where('playstations.id', $request->playstation_id)->exists() 
+                              || ($device->playstation_id && $device->playstation_id == $request->playstation_id);
+                
+                if (!$isAssociated) {
+                    return redirect()->back()->with('gagal', 'Playstation yang dipilih tidak terkait dengan perangkat ini.');
+                }
+            } else {
+                // Fallback to default PlayStation (backward compatibility)
+                $playstation = $device->playstation;
+            }
+            
             $validatedData['device_id'] = $device->id;
-            $validatedData['harga'] = $device->playstation->harga ?? 0;
+            $validatedData['harga'] = $playstation->harga ?? 0;
             $validatedData['waktu_Selesai'] = null;
             $validatedData['jam_main'] = null;
             $validatedData['status_transaksi'] = 'berjalan';
             $validatedData['lost_time_start'] = Carbon::now();
+            
+            // Store the selected PlayStation ID for reference
+            if ($request->playstation_id) {
+                $validatedData['playstation_id'] = $request->playstation_id;
+            }
+            
             // For postpaid, total is calculated from FnB items only (no device cost initially)
             $validatedData['total'] = $request->total ?? 0;
         }
@@ -707,31 +766,46 @@ class TransactionController extends Controller
 
     public function getHarga(Request $request)
     {
-        $device = $request->query('device');
+        $deviceId = $request->query('device');
+        $playstationId = $request->query('playstation_id');
 
-        $devices = Device::find($device);
-        if (!$devices) {
+        if ($playstationId) {
+            $playstation = Playstation::find($playstationId);
+            return response()->json(['harga' => $playstation ? $playstation->harga : 0]);
+        }
+
+        $device = Device::find($deviceId);
+        if (!$device) {
             return response()->json(['harga' => 0]);
         }
 
-        $harga = Playstation::find($devices->playstation_id);
-        if (!$harga) {
+        $playstation = Playstation::find($device->playstation_id);
+        if (!$playstation) {
             return response()->json(['harga' => 0]);
         }
 
-        return response()->json(['harga' => $harga->harga]);
+        return response()->json(['harga' => $playstation->harga]);
     }
 
     public function getHourlyPrices(Request $request)
     {
-        $device = $request->query('device');
+        $deviceId = $request->query('device');
+        $playstationId = $request->query('playstation_id');
 
-        $devices = Device::find($device);
-        if (!$devices) {
+        if ($playstationId) {
+            $playstation = Playstation::find($playstationId);
+            if (!$playstation) {
+                return response()->json(['prices' => []]);
+            }
+            return response()->json(['prices' => $playstation->getAvailableHoursWithPrices()]);
+        }
+
+        $device = Device::find($deviceId);
+        if (!$device) {
             return response()->json(['prices' => []]);
         }
 
-        $playstation = Playstation::find($devices->playstation_id);
+        $playstation = Playstation::find($device->playstation_id);
         if (!$playstation) {
             return response()->json(['prices' => []]);
         }

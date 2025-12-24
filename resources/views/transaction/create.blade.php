@@ -89,7 +89,7 @@
                     <div class="row mb-2" id="device-row">
                         <div class="col-md-12" id="device">
                             <label for="device_id" class="form-label small">Nama Perangkat</label>
-                            <select class="form-control" id="device_id" name="device_id" onchange="showPrice()" {{ $noDevices ? 'disabled' : '' }}>
+                            <select class="form-control" id="device_id" name="device_id" onchange="handleDeviceChange()" {{ $noDevices ? 'disabled' : '' }}>
                                 @if($noDevices)
                                     <option value="" selected>Semua perangkat sedang digunakan</option>
                                 @else
@@ -98,16 +98,28 @@
                                         @php
                                             $displayText = $device->nama . ' - ' . ($device->playstation_names ?: 'Tidak Diketahui');
                                             $dataPlaystationId = $device->playstation_id;
+                                            $dataPlaystations = json_encode($device->playstations->toArray());
                                         @endphp
                                         @if (old('device_id') == $device->id)
-                                            <option value="{{ $device->id }}" data-playstation-id="{{ $dataPlaystationId }}" selected>{{ $displayText }}</option>
+                                            <option value="{{ $device->id }}" data-playstation-id="{{ $dataPlaystationId }}" data-playstations="{{ $dataPlaystations }}" selected>{{ $displayText }}</option>
                                         @else
-                                            <option value="{{ $device->id }}" data-playstation-id="{{ $dataPlaystationId }}">{{ $displayText }}</option>
+                                            <option value="{{ $device->id }}" data-playstation-id="{{ $dataPlaystationId }}" data-playstations="{{ $dataPlaystations }}">{{ $displayText }}</option>
                                         @endif
                                     @endforeach
                                 @endif
                             </select>
                             <small class="text-muted" id="device-help-text">Pilih perangkat yang tersedia</small>
+                        </div>
+                    </div>
+
+                    <!-- Row 2.1: PlayStation Type (Conditional) -->
+                    <div class="row mb-2" id="playstation-type-row" style="display: none;">
+                        <div class="col-md-12">
+                            <label for="playstation_id" class="form-label small">Pilih Jenis Perangkat [Jenis PlayStation - Harga]</label>
+                            <select class="form-control" id="playstation_id" name="playstation_id" onchange="showPrice()">
+                                <option value="" selected disabled hidden>Pilih jenis perangkat</option>
+                            </select>
+                            <small class="text-muted">Perangkat ini memiliki beberapa jenis tarif, silakan pilih salah satu</small>
                         </div>
                     </div>
 
@@ -455,6 +467,7 @@
             if (isCustomPackage) return; // In custom package mode, price is fixed by package
 
             const device = document.getElementById('device_id').value;
+            const playstationSelect = document.getElementById('playstation_id');
             const harga = document.getElementById('harga');
             const totalField = document.getElementById('total_ps');
             const jamMainSelect = document.getElementById('jam_main_select');
@@ -468,54 +481,120 @@
                 return;
             }
 
-            console.log(device);
+            console.log('Device:', device);
             
-            // Get base price first
-            axios.get('/api/get-harga', {
+            // Check if a specific playstation type is selected
+            const selectedPlaystationId = playstationSelect.value;
+            
+            if (selectedPlaystationId) {
+                // Use specific playstation pricing
+                console.log('Using specific playstation ID:', selectedPlaystationId);
+                
+                // Get price for specific playstation
+                axios.get('/api/get-harga', {
                     params: {
-                        device: device
+                        device: device,
+                        playstation_id: selectedPlaystationId
                     }
                 })
                 .then(function(response) {
-                    console.log(response.data);
+                    console.log('Playstation price response:', response.data);
                     harga.value = response.data.harga;
                     
-                    // Load hourly prices
+                    // Load hourly prices for this specific playstation
                     return axios.get('/api/get-hourly-prices', {
                         params: {
-                            device: device
+                            device: device,
+                            playstation_id: selectedPlaystationId
                         }
                     });
                 })
                 .then(function(hourlyResponse) {
-                    console.log('Hourly prices:', hourlyResponse.data);
+                    console.log('Hourly prices for playstation:', hourlyResponse.data);
                     const prices = hourlyResponse.data.prices || {};
-                    
+
                     // Update jam main select with hourly prices
                     jamMainSelect.innerHTML = '<option value="">Pilih jam yang tersedia</option>';
-                    
+
                     Object.keys(prices).sort((a, b) => parseInt(a) - parseInt(b)).forEach(hour => {
                         const option = document.createElement('option');
                         option.value = hour;
                         option.textContent = `${hour} jam - Rp ${new Intl.NumberFormat('id-ID').format(prices[hour])}`;
                         jamMainSelect.appendChild(option);
                     });
-                    
+
                     jamMainSelect.innerHTML += '<option value="custom">Custom (input manual)</option>';
-                    
+
                     // Calculate total if jam main is selected
                     if (!isNaN(jamMain) && jamMain > 0) {
-                        showTotal(); // Use showTotal() to get correct pricing
+                        showTotal();
                     } else {
                         totalField.value = '';
                     }
                 })
                 .catch(function(error) {
-                    console.log(error);
+                    console.log('Error getting playstation pricing:', error);
                     harga.value = '';
                     totalField.value = '';
                     jamMainSelect.innerHTML = '<option value="">Pilih jam yang tersedia</option><option value="custom">Custom (input manual)</option>';
                 });
+            } else {
+                // Use default device pricing (backward compatibility)
+                console.log('Using default device pricing');
+
+                // Get base price first - also check if specific playstation selected
+                const params = {
+                    device: device
+                };
+
+                // If a specific playstation type is selected, use that for pricing
+                const specificPlaystationId = playstationSelect.value;
+                if (specificPlaystationId) {
+                    params.playstation_id = specificPlaystationId;
+                }
+
+                axios.get('/api/get-harga', {
+                        params: params
+                    })
+                    .then(function(response) {
+                        console.log(response.data);
+                        harga.value = response.data.harga;
+
+                        // Load hourly prices using the same parameters
+                        return axios.get('/api/get-hourly-prices', {
+                            params: params
+                        });
+                    })
+                    .then(function(hourlyResponse) {
+                        console.log('Hourly prices:', hourlyResponse.data);
+                        const prices = hourlyResponse.data.prices || {};
+                        
+                        // Update jam main select with hourly prices
+                        jamMainSelect.innerHTML = '<option value="">Pilih jam yang tersedia</option>';
+                        
+                        Object.keys(prices).sort((a, b) => parseInt(a) - parseInt(b)).forEach(hour => {
+                            const option = document.createElement('option');
+                            option.value = hour;
+                            option.textContent = `${hour} jam - Rp ${new Intl.NumberFormat('id-ID').format(prices[hour])}`;
+                            jamMainSelect.appendChild(option);
+                        });
+                        
+                        jamMainSelect.innerHTML += '<option value="custom">Custom (input manual)</option>';
+                        
+                        // Calculate total if jam main is selected
+                        if (!isNaN(jamMain) && jamMain > 0) {
+                            showTotal(); // Use showTotal() to get correct pricing
+                        } else {
+                            totalField.value = '';
+                        }
+                    })
+                    .catch(function(error) {
+                        console.log(error);
+                        harga.value = '';
+                        totalField.value = '';
+                        jamMainSelect.innerHTML = '<option value="">Pilih jam yang tersedia</option><option value="custom">Custom (input manual)</option>';
+                    });
+            }
         }
 
         function handleJamMainChange() {
@@ -543,11 +622,19 @@
                 
                 // Get hourly price for selected hour
                 const device = document.getElementById('device_id').value;
+                const playstationSelect = document.getElementById('playstation_id'); // Get the PlayStation selection
                 if (device && device !== "dummy") {
+                    const params = {
+                        device: device
+                    };
+
+                    // If a specific playstation type is selected, include it in the request
+                    if (playstationSelect && playstationSelect.value) {
+                        params.playstation_id = playstationSelect.value;
+                    }
+
                     axios.get('/api/get-hourly-prices', {
-                        params: {
-                            device: device
-                        }
+                        params: params
                     })
                     .then(function(response) {
                         const prices = response.data.prices || {};
@@ -603,11 +690,19 @@
             // If hourly price is selected, get the specific hourly price
             if (jamMainSelect.value && jamMainSelect.value !== 'custom') {
                 const device = document.getElementById('device_id').value;
+                const playstationSelect = document.getElementById('playstation_id'); // Get the PlayStation selection
                 if (device && device !== "dummy") {
+                    const params = {
+                        device: device
+                    };
+
+                    // If a specific playstation type is selected, include it in the request
+                    if (playstationSelect && playstationSelect.value) {
+                        params.playstation_id = playstationSelect.value;
+                    }
+
                     axios.get('/api/get-hourly-prices', {
-                        params: {
-                            device: device
-                        }
+                        params: params
                     })
                     .then(function(response) {
                         const prices = response.data.prices || {};
@@ -1025,12 +1120,72 @@
                     const option = document.createElement('option');
                     option.value = device.id;
                     option.textContent = `${device.nama} - ${device.playstation_names || 'Tidak Diketahui'}`;
+                    // Add the playstations data attribute
+                    if (device.playstations && device.playstations.length > 0) {
+                        option.setAttribute('data-playstations', JSON.stringify(device.playstations));
+                        option.setAttribute('data-playstation-id', device.playstation_id || '');
+                    }
                     deviceSelect.appendChild(option);
                 }
             });
             
             deviceSelect.disabled = {{ $noDevices ? 'true' : 'false' }};
             deviceHelpText.textContent = 'Pilih perangkat yang tersedia';
+        }
+
+        function handleDeviceChange() {
+            const deviceSelect = document.getElementById('device_id');
+            const selectedOption = deviceSelect.options[deviceSelect.selectedIndex];
+            const playstationTypeRow = document.getElementById('playstation-type-row');
+            const playstationSelect = document.getElementById('playstation_id');
+            
+            // Get playstations data from the selected option
+            const playstationsData = selectedOption.getAttribute('data-playstations');
+            
+            if (!playstationsData || playstationsData === 'null' || playstationsData === '[]') {
+                // No multiple playstations, hide the selection row
+                playstationTypeRow.style.display = 'none';
+                playstationSelect.innerHTML = '';
+                showPrice(); // Show price for single playstation
+                return;
+            }
+            
+            try {
+                const playstations = JSON.parse(playstationsData);
+                
+                if (playstations && playstations.length > 1) {
+                    // Multiple playstations available, show selection row
+                    playstationTypeRow.style.display = 'flex';
+                    playstationSelect.innerHTML = '<option value="" selected disabled hidden>Pilih jenis playstation</option>';
+                    
+                    // Add each playstation as an option
+                    playstations.forEach(playstation => {
+                        const option = document.createElement('option');
+                        option.value = playstation.id;
+                        option.textContent = `${playstation.nama} - Rp ${new Intl.NumberFormat('id-ID').format(playstation.harga)}`;
+                        playstationSelect.appendChild(option);
+                    });
+                    
+                    // Clear price until user selects a playstation type
+                    document.getElementById('harga').value = '';
+                    document.getElementById('total_ps').value = '';
+                } else if (playstations && playstations.length === 1) {
+                    // Only one playstation, hide selection and use it directly
+                    playstationTypeRow.style.display = 'none';
+                    playstationSelect.innerHTML = '';
+                    showPrice(); // Show price for the single playstation
+                } else {
+                    // No playstations, hide selection
+                    playstationTypeRow.style.display = 'none';
+                    playstationSelect.innerHTML = '';
+                    showPrice();
+                }
+            } catch (error) {
+                console.error('Error parsing playstations data:', error);
+                playstationTypeRow.style.display = 'none';
+                playstationSelect.innerHTML = '';
+                showPrice();
+            }
         }
 
         function filterDevicesForCustomPackage(package) {
