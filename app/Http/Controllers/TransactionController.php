@@ -83,6 +83,7 @@ class TransactionController extends Controller
             'payment_status' => 'paid',
             'payment_method' => $paymentMethod,
             'status_transaksi' => 'selesai',
+            'paid_at' => now(),
         ];
 
         // Only add diskon to update data if discount > 0

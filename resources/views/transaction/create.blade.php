@@ -14,7 +14,7 @@
             </div>
             <!-- Card Body -->
             <div class="card-body p-3">
-                <form method="POST" action="{{ route('transaction.store') }}">
+                <form method="POST" action="{{ route('transaction.store') }}" onsubmit="return validateTransactionForm()">
                     @csrf
                     <input type="hidden" name="transaksi" value="transaksi">
                     <input type="hidden" name="status_device" value="Digunakan">
@@ -1320,6 +1320,104 @@
                 `${date.getHours()}:${date.getMinutes() < 10 ? '0' + date.getMinutes() : date.getMinutes()}`;
 
             console.log(`${date.getHours()}:${date.getMinutes()}`)
+        }
+
+        function validateTransactionForm() {
+            const tipeTransaksi = document.querySelector('input[name="tipe_transaksi"]:checked');
+            const nama = document.getElementById('nama').value.trim();
+            const deviceId = document.getElementById('device_id').value;
+            const playstationId = document.getElementById('playstation_id').value;
+            const customPackageId = document.getElementById('custom_package_id').value;
+            const jamMainSelect = document.getElementById('jam_main_select').value;
+            const jamMainInput = document.getElementById('jam_main').value.trim();
+            const harga = document.getElementById('harga').value.trim();
+            const total = document.getElementById('total').value.trim();
+
+            let errors = [];
+
+            // Check transaction type
+            if (!tipeTransaksi) {
+                errors.push('Silakan pilih jenis transaksi (Paket, Lost Time, atau Custom Paket)');
+            }
+
+            // Check required name
+            if (!nama) {
+                errors.push('Nama pelanggan wajib diisi');
+            }
+
+            // Check device selection
+            if (!deviceId || deviceId === 'dummy' || deviceId === '') {
+                errors.push('Silakan pilih perangkat yang tersedia');
+            }
+
+            // Type-specific validations
+            if (tipeTransaksi && tipeTransaksi.value === 'custom_package') {
+                if (!customPackageId) {
+                    errors.push('Silakan pilih custom package terlebih dahulu');
+                }
+            } else if (tipeTransaksi && tipeTransaksi.value === 'prepaid') {
+                // Check jam main for prepaid
+                if (!jamMainSelect && !jamMainInput) {
+                    errors.push('Silakan pilih jam main atau masukkan jam main secara manual');
+                } else if (jamMainSelect === 'custom' && !jamMainInput) {
+                    errors.push('Silakan masukkan jumlah jam main untuk custom input');
+                } else if (jamMainInput && (isNaN(jamMainInput) || parseFloat(jamMainInput) <= 0)) {
+                    errors.push('Jam main harus berupa angka positif');
+                }
+
+                // Check harga
+                if (!harga || harga === '0' || isNaN(harga)) {
+                    errors.push('Harga per jam harus terisi dengan benar');
+                }
+            }
+
+            // Check for multi-playstation device without playstation selection
+            if (deviceId && deviceId !== 'dummy' && deviceId !== '') {
+                // Check if device has multiple playstation types and playstation_id is not selected
+                const deviceSelect = document.getElementById('device_id');
+                const selectedOption = deviceSelect.options[deviceSelect.selectedIndex];
+                const hasMultiplePlaystations = selectedOption && selectedOption.getAttribute('data-playstations');
+                
+                if (hasMultiplePlaystations && !playstationId) {
+                    errors.push('Perangkat ini memiliki beberapa jenis perangkat. Silakan pilih jenis perangkat terlebih dahulu.');
+                }
+            }
+
+            // Check total
+            if (!total || total === '0' || isNaN(total)) {
+                errors.push('Total transaksi harus terisi dengan benar');
+            }
+
+            // Show errors if any
+            if (errors.length > 0) {
+                let errorMessage = '<div class="alert alert-warning alert-dismissible fade show" role="alert">';
+                errorMessage += '<h6 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> Form Belum Lengkap!</h6>';
+                errorMessage += '<p class="mb-2">Mohon lengkapi field yang wajib diisi berikut:</p>';
+                errorMessage += '<ul class="mb-0">';
+                
+                errors.forEach(error => {
+                    errorMessage += `<li>${error}</li>`;
+                });
+                
+                errorMessage += '</ul>';
+                errorMessage += '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>';
+                errorMessage += '</div>';
+
+                // Remove any existing alerts
+                const existingAlerts = document.querySelectorAll('.alert');
+                existingAlerts.forEach(alert => alert.remove());
+
+                // Insert the error message at the top of the form
+                const form = document.querySelector('form');
+                form.insertAdjacentHTML('afterbegin', errorMessage);
+
+                // Scroll to top to show the error
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+
+                return false;
+            }
+
+            return true;
         }
     </script>
 @endsection

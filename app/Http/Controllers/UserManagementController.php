@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\WorkShift;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -33,7 +34,8 @@ class UserManagementController extends Controller
     {
         $active = 'users';
         $title = 'Tambah User';
-        return view('user.create', compact('active', 'title'));
+        $workShifts = WorkShift::all();
+        return view('user.create', compact('active', 'title', 'workShifts'));
     }
 
     /**
@@ -50,6 +52,7 @@ class UserManagementController extends Controller
             'password' => 'required|string|min:6|confirmed',
             'role' => 'required|in:owner,kasir,admin',
             'shift' => 'nullable|required_if:role,kasir|string|max:255',
+            'work_shift_id' => 'nullable|required_if:role,kasir|exists:work_shifts,id',
         ]);
 
         User::create([
@@ -58,6 +61,7 @@ class UserManagementController extends Controller
             'password' => Hash::make($validated['password']),
             'role' => $validated['role'],
             'shift' => $validated['role'] === 'kasir' ? $validated['shift'] : null,
+            'work_shift_id' => $validated['role'] === 'kasir' ? $validated['work_shift_id'] : null,
         ]);
 
         return redirect()->route('users.index')->with('success', 'User berhasil ditambahkan');
@@ -74,7 +78,8 @@ class UserManagementController extends Controller
         $user = User::findOrFail($id);
         $active = 'users';
         $title = 'Edit User';
-        return view('user.edit', compact('user', 'active', 'title'));
+        $workShifts = WorkShift::all();
+        return view('user.edit', compact('user', 'active', 'title', 'workShifts'));
     }
 
     /**
@@ -94,6 +99,7 @@ class UserManagementController extends Controller
             'password' => 'nullable|string|min:6|confirmed',
             'role' => 'required|in:owner,kasir,admin',
             'shift' => 'nullable|required_if:role,kasir|string|max:255',
+            'work_shift_id' => 'nullable|required_if:role,kasir|exists:work_shifts,id',
         ]);
 
         $data = [
@@ -101,6 +107,7 @@ class UserManagementController extends Controller
             'email' => $validated['email'],
             'role' => $validated['role'],
             'shift' => $validated['role'] === 'kasir' ? $validated['shift'] : null,
+            'work_shift_id' => $validated['role'] === 'kasir' ? $validated['work_shift_id'] : null,
         ];
 
         if ($request->filled('password')) {

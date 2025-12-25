@@ -24,11 +24,14 @@ Auth::routes();
 Route::middleware(['auth'])->group(function () {
     Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
     
-    Route::get('/chart-pie-data', 'App\Http\Controllers\HomeController@pieCartData2');
+    Route::get('/chart-pie-data', [App\Http\Controllers\HomeController::class, 'pieCartData2']);
     Route::get('/chart-area-data', 'App\Http\Controllers\HomeController@areaCartData');
     Route::get('/hourly-revenue-data', 'App\Http\Controllers\HomeController@hourlyRevenueData');
     
     Route::get('/profile', 'App\Http\Controllers\HomeController@profile')->name('profile');
+    Route::post('/device/{id}/update-status', [App\Http\Controllers\DeviceController::class, 'updateStatus'])->name('device.updateStatus');
+    Route::post('/device/update-all-statuses', [App\Http\Controllers\DeviceController::class, 'updateDeviceStatusesFromTimers'])->name('device.updateAllStatuses');
+    Route::get('/device/{id}/test-status', [App\Http\Controllers\DeviceController::class, 'testStatus'])->name('device.testStatus');
     Route::put('/profile/{id}', 'App\Http\Controllers\HomeController@update');
     
     Route::get('/server-time', function() {
@@ -57,9 +60,8 @@ Route::middleware(['auth', 'check_role:admin,kasir'])->group(function () {
     // Device
     Route::resource('/device', App\Http\Controllers\DeviceController::class);
     Route::get('/device/by-playstation/{id}', [App\Http\Controllers\DeviceController::class, 'byPlaystation'])->name('device.byPlaystation');
-    Route::post('/device/{id}/update-status', 'App\Http\Controllers\DeviceController@updateStatusAjax');
-    Route::get('/booking/{id}/add', 'App\Http\Controllers\DeviceController@bookingAdd');
-    Route::get('/booking/{id}', 'App\Http\Controllers\DeviceController@booking');
+    Route::get('/booking/{id}/add', [App\Http\Controllers\DeviceController::class, 'bookingAdd']);
+    Route::get('/booking/{id}', [App\Http\Controllers\DeviceController::class, 'booking']);
 
     // Expense (Kasir creates, Admin manages)
     Route::resource('/expense', App\Http\Controllers\ExpenseController::class);
@@ -112,5 +114,8 @@ Route::middleware(['auth', 'check_role:admin'])->group(function () {
     // App Settings (Admin only)
     Route::get('/settings', [App\Http\Controllers\AppSettingsController::class, 'index'])->name('settings.index');
     Route::post('/settings/reset-transactions', [App\Http\Controllers\AppSettingsController::class, 'resetTransactions'])->name('settings.reset-transactions');
+    
+    // Work Shift Management
+    Route::resource('/work_shifts', App\Http\Controllers\WorkShiftController::class);
     
 });

@@ -3,6 +3,10 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Database\Seeders\UserSeeder;
+use Database\Seeders\BookingSeeder;
+use Database\Seeders\DevicePlaystationSeeder;
+use Database\Seeders\WorkShiftSeeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -13,6 +17,13 @@ class DatabaseSeeder extends Seeder
      */
     public function run()
     {
+        $this->call([
+            UserSeeder::class,
+            BookingSeeder::class,
+            DevicePlaystationSeeder::class,
+            WorkShiftSeeder::class,
+        ]);
+
         // Buat user admin
         \App\Models\User::updateOrCreate([
             'email' => 'admin@gmail.com',

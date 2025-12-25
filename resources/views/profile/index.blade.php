@@ -91,6 +91,29 @@
                 </div>
                 <h4 class="text-center">{{ auth()->user()->name }}</h4>
                 <p class="text-center">{{ auth()->user()->status }}</p>
+                
+                @if(auth()->user()->isKasir() && auth()->user()->workShift)
+                    <div class="card-body border-top">
+                        <h6 class="text-center text-primary font-weight-bold mb-3">
+                            <i class="fas fa-clock"></i> Informasi Jam Kerja
+                        </h6>
+                        <div class="text-center">
+                            <span class="badge badge-info badge-pill mb-2" style="font-size: 1rem;">
+                                {{ auth()->user()->workShift->nama_shift }}
+                            </span>
+                            <div class="text-muted small">
+                                <i class="fas fa-clock"></i>
+                                {{ auth()->user()->workShift->jam_mulai }} - {{ auth()->user()->workShift->jam_selesai }}
+                            </div>
+                            @if(auth()->user()->workShift->keterangan)
+                                <div class="text-muted small mt-2">
+                                    <i class="fas fa-info-circle"></i>
+                                    {{ auth()->user()->workShift->keterangan }}
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                @endif
             </div>
         </div>
     </div>

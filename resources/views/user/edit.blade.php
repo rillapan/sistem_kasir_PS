@@ -68,6 +68,22 @@
                         </span>
                     @enderror
                 </div>
+                <div class="form-group" id="work-shift-group" style="display: none;">
+                    <label for="work_shift_id">Jam Kerja</label>
+                    <select class="form-control @error('work_shift_id') is-invalid @enderror" id="work_shift_id" name="work_shift_id">
+                        <option value="">Pilih Jam Kerja</option>
+                        @foreach($workShifts as $workShift)
+                            <option value="{{ $workShift->id }}" {{ old('work_shift_id', $user->work_shift_id) == $workShift->id ? 'selected' : '' }}>
+                                {{ $workShift->nama_shift }} ({{ $workShift->jam_mulai }} - {{ $workShift->jam_selesai }})
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('work_shift_id')
+                        <span class="invalid-feedback" role="alert">
+                            <strong>{{ $message }}</strong>
+                        </span>
+                    @enderror
+                </div>
 
                 <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
                 <a href="{{ route('users.index') }}" class="btn btn-secondary">Batal</a>
@@ -80,14 +96,17 @@
     document.addEventListener('DOMContentLoaded', function() {
         const roleSelect = document.getElementById('role');
         const shiftGroup = document.getElementById('shift-group');
+        const workShiftGroup = document.getElementById('work-shift-group');
 
         function toggleShift() {
             // Check existing value (hidden input for self) or selected value
             const currentRole = roleSelect.value;
             if (currentRole === 'kasir') {
                 shiftGroup.style.display = 'block';
+                workShiftGroup.style.display = 'block';
             } else {
                 shiftGroup.style.display = 'none';
+                workShiftGroup.style.display = 'none';
             }
         }
 

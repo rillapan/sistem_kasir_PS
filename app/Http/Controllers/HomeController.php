@@ -25,60 +25,125 @@ class HomeController extends Controller
     /**
      * Show the application dashboard.
      *
+     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Contracts\Support\Renderable
      */
-    public function index()
+    public function index(Request $request)
     {
+        // Get period filter from request
+        $period = $request->input('period', 'today'); // today, week, month, custom
+        $start_date = $request->input('start_date');
+        $end_date = $request->input('end_date');
+        
+        // Calculate date range based on period
+        $dateRange = $this->getDateRange($period, $start_date, $end_date);
+        
         $member = 0;
         $play = Playstation::count();
         $transaction = Transaction::count();
-        // Calculate total revenue from paid transactions only
+        
+        // Calculate total revenue from paid transactions within date range
         $revenue = Transaction::where('payment_status', 'paid')
+            ->whereBetween('created_at', [$dateRange['start'], $dateRange['end']])
             ->sum('total');
         
-        // Calculate today's revenue from paid transactions only
-        $todayRevenue = Transaction::whereDate('created_at', today())
-            ->where('payment_status', 'paid')
-            ->sum('total');
+        // Calculate revenue based on user role and shift within date range
+        $todayRevenue = $this->calculateShiftRevenue($dateRange['start'], $dateRange['end']);
             
-        // Calculate payment method breakdown for today's paid transactions
-        $todayPaymentMethodCounts = [
-            'tunai' => Transaction::whereDate('created_at', today())
-                ->where('payment_status', 'paid')
-                ->where('payment_method', 'tunai')
-                ->count(),
-            'e-wallet' => Transaction::whereDate('created_at', today())
-                ->where('payment_status', 'paid')
-                ->where('payment_method', 'e-wallet')
-                ->count(),
-            'transfer_bank' => Transaction::whereDate('created_at', today())
-                ->where('payment_status', 'paid')
-                ->where('payment_method', 'transfer_bank')
-                ->count(),
-        ];
-
-        $todayPaymentMethodTotals = [
-            'tunai' => Transaction::whereDate('created_at', today())
-                ->where('payment_status', 'paid')
-                ->where('payment_method', 'tunai')
-                ->sum('total'),
-            'e-wallet' => Transaction::whereDate('created_at', today())
-                ->where('payment_status', 'paid')
-                ->where('payment_method', 'e-wallet')
-                ->sum('total'),
-            'transfer_bank' => Transaction::whereDate('created_at', today())
-                ->where('payment_status', 'paid')
-                ->where('payment_method', 'transfer_bank')
-                ->sum('total'),
-        ];
+        // Calculate payment method breakdown for paid transactions within date range
+        $user = auth()->user();
         
-        // Calculate revenue per user (kasir/shift) for today
-        $todayRevenuePerUser = Transaction::selectRaw('users.name, users.role, SUM(total) as revenue')
-            ->join('users', 'users.id', '=', 'transactions.user_id')
-            ->whereDate('transactions.created_at', today())
-            ->where('transactions.payment_status', 'paid')
-            ->groupBy('users.id', 'users.name', 'users.role')
-            ->get();
+        if ($user->isKasir()) {
+            // For cashiers, only show their own payment methods
+            $todayPaymentMethodCounts = [
+                'tunai' => Transaction::whereBetween('created_at', [$dateRange['start'], $dateRange['end']])
+                    ->where('payment_status', 'paid')
+                    ->where('payment_method', 'tunai')
+                    ->where('user_id', $user->id)
+                    ->count(),
+                'e-wallet' => Transaction::whereBetween('created_at', [$dateRange['start'], $dateRange['end']])
+                    ->where('payment_status', 'paid')
+                    ->where('payment_method', 'e-wallet')
+                    ->where('user_id', $user->id)
+                    ->count(),
+                'transfer_bank' => Transaction::whereBetween('created_at', [$dateRange['start'], $dateRange['end']])
+                    ->where('payment_status', 'paid')
+                    ->where('payment_method', 'transfer_bank')
+                    ->where('user_id', $user->id)
+                    ->count(),
+            ];
+
+            $todayPaymentMethodTotals = [
+                'tunai' => Transaction::whereBetween('created_at', [$dateRange['start'], $dateRange['end']])
+                    ->where('payment_status', 'paid')
+                    ->where('payment_method', 'tunai')
+                    ->where('user_id', $user->id)
+                    ->sum('total'),
+                'e-wallet' => Transaction::whereBetween('created_at', [$dateRange['start'], $dateRange['end']])
+                    ->where('payment_status', 'paid')
+                    ->where('payment_method', 'e-wallet')
+                    ->where('user_id', $user->id)
+                    ->sum('total'),
+                'transfer_bank' => Transaction::whereBetween('created_at', [$dateRange['start'], $dateRange['end']])
+                    ->where('payment_status', 'paid')
+                    ->where('payment_method', 'transfer_bank')
+                    ->where('user_id', $user->id)
+                    ->sum('total'),
+            ];
+        } else {
+            // For admin/owner, show all payment methods
+            $todayPaymentMethodCounts = [
+                'tunai' => Transaction::whereBetween('created_at', [$dateRange['start'], $dateRange['end']])
+                    ->where('payment_status', 'paid')
+                    ->where('payment_method', 'tunai')
+                    ->count(),
+                'e-wallet' => Transaction::whereBetween('created_at', [$dateRange['start'], $dateRange['end']])
+                    ->where('payment_status', 'paid')
+                    ->where('payment_method', 'e-wallet')
+                    ->count(),
+                'transfer_bank' => Transaction::whereBetween('created_at', [$dateRange['start'], $dateRange['end']])
+                    ->where('payment_status', 'paid')
+                    ->where('payment_method', 'transfer_bank')
+                    ->count(),
+            ];
+
+            $todayPaymentMethodTotals = [
+                'tunai' => Transaction::whereBetween('created_at', [$dateRange['start'], $dateRange['end']])
+                    ->where('payment_status', 'paid')
+                    ->where('payment_method', 'tunai')
+                    ->sum('total'),
+                'e-wallet' => Transaction::whereBetween('created_at', [$dateRange['start'], $dateRange['end']])
+                    ->where('payment_status', 'paid')
+                    ->where('payment_method', 'e-wallet')
+                    ->sum('total'),
+                'transfer_bank' => Transaction::whereBetween('created_at', [$dateRange['start'], $dateRange['end']])
+                    ->where('payment_status', 'paid')
+                    ->where('payment_method', 'transfer_bank')
+                    ->sum('total'),
+            ];
+        }
+        
+        // Calculate revenue per user (kasir/shift) for the selected period
+        $user = auth()->user();
+        
+        if ($user->isKasir()) {
+            // For cashiers, only show their own revenue
+            $todayRevenuePerUser = Transaction::selectRaw('users.name, users.role, users.work_shift_id, SUM(total) as revenue')
+                ->join('users', 'users.id', '=', 'transactions.user_id')
+                ->whereBetween('transactions.created_at', [$dateRange['start'], $dateRange['end']])
+                ->where('transactions.payment_status', 'paid')
+                ->where('users.id', $user->id)
+                ->groupBy('users.id', 'users.name', 'users.role', 'users.work_shift_id')
+                ->get();
+        } else {
+            // For admin/owner, show all users' revenue
+            $todayRevenuePerUser = Transaction::selectRaw('users.name, users.role, users.work_shift_id, SUM(total) as revenue')
+                ->join('users', 'users.id', '=', 'transactions.user_id')
+                ->whereBetween('transactions.created_at', [$dateRange['start'], $dateRange['end']])
+                ->where('transactions.payment_status', 'paid')
+                ->groupBy('users.id', 'users.name', 'users.role', 'users.work_shift_id')
+                ->get();
+        }
             
         return view('home', [
             'title' => 'Dashboard',
@@ -87,22 +152,173 @@ class HomeController extends Controller
             'play' => $play,
             'transaksi' => $transaction,
             'pendapatan' => $revenue,
-            'today_pendapatan' => $todayRevenue,
+            'todayRevenue' => $todayRevenue,
+            'today_pendapatan' => $todayRevenue, // Add this variable for backward compatibility
             'todayPaymentMethodCounts' => $todayPaymentMethodCounts,
             'todayPaymentMethodTotals' => $todayPaymentMethodTotals,
             'todayRevenuePerUser' => $todayRevenuePerUser,
+            'period' => $period,
+            'start_date' => $start_date,
+            'end_date' => $end_date,
+            'dateRange' => $dateRange
         ]);
+    }
+
+    /**
+     * Calculate date range based on period
+     *
+     * @param string $period
+     * @param string|null $start_date
+     * @param string|null $end_date
+     * @return array
+     */
+    private function getDateRange($period, $start_date = null, $end_date = null)
+    {
+        $now = now();
+        
+        switch ($period) {
+            case 'today':
+                return [
+                    'start' => $now->copy()->startOfDay(),
+                    'end' => $now->copy()->endOfDay()
+                ];
+                
+            case 'week':
+                return [
+                    'start' => $now->copy()->startOfWeek(),
+                    'end' => $now->copy()->endOfWeek()
+                ];
+                
+            case 'month':
+                return [
+                    'start' => $now->copy()->startOfMonth(),
+                    'end' => $now->copy()->endOfMonth()
+                ];
+                
+            case 'custom':
+                if ($start_date && $end_date) {
+                    return [
+                        'start' => \Carbon\Carbon::parse($start_date)->startOfDay(),
+                        'end' => \Carbon\Carbon::parse($end_date)->endOfDay()
+                    ];
+                }
+                // Fallback to today if custom dates are invalid
+                return [
+                    'start' => $now->copy()->startOfDay(),
+                    'end' => $now->copy()->endOfDay()
+                ];
+                
+            default:
+                return [
+                    'start' => $now->copy()->startOfDay(),
+                    'end' => $now->copy()->endOfDay()
+                ];
+        }
+    }
+
+    /**
+     * Calculate revenue based on user's shift (for cashiers) or daily (for admin/owner)
+     */
+    private function calculateShiftRevenue($startDate = null, $endDate = null)
+    {
+        $user = auth()->user();
+        
+        // For admin and owner, show full revenue for the period
+        if ($user->isAdmin() || $user->isOwner()) {
+            $query = Transaction::where('payment_status', 'paid');
+            if ($startDate && $endDate) {
+                $query->whereBetween('created_at', [$startDate, $endDate]);
+            } else {
+                $query->whereDate('created_at', today());
+            }
+            return $query->sum('total');
+        }
+        
+        // For cashiers, show revenue based on their shift
+        if ($user->isKasir()) {
+            $query = Transaction::where('payment_status', 'paid')
+                ->where('user_id', $user->id);
+                
+            if ($startDate && $endDate) {
+                $query->whereBetween('created_at', [$startDate, $endDate]);
+            } else {
+                $query->whereDate('created_at', today());
+            }
+            
+            return $query->sum('total');
+        }
+        
+        return 0;
+    }
+
+    /**
+     * Calculate revenue based on user's shift (for cashiers) or daily (for admin/owner)
+     */
+    private function calculateShiftRevenueOld()
+    {
+        $user = auth()->user();
+        
+        // For admin and owner, show full daily revenue
+        if ($user->isAdmin() || $user->isOwner()) {
+            return Transaction::whereDate('created_at', today())
+                ->where('payment_status', 'paid')
+                ->sum('total');
+        }
+        
+        // For cashier, show revenue within their shift hours
+        if ($user->isKasir() && $user->workShift) {
+            $shift = $user->workShift;
+            $currentTime = now();
+            
+            // If current time is within shift, show shift revenue for today
+            if ($shift->isWithinShiftTime($currentTime)) {
+                return Transaction::whereDate('created_at', today())
+                    ->where('payment_status', 'paid')
+                    ->where(function($query) use ($shift) {
+                        $query->whereRaw('TIME(created_at) >= ?', [$shift->jam_mulai])
+                              ->whereRaw('TIME(created_at) <= ?', [$shift->jam_selesai]);
+                    })
+                    ->sum('total');
+            }
+        }
+        
+        // Default to daily revenue if no shift or outside shift hours
+        return Transaction::whereDate('created_at', today())
+            ->where('payment_status', 'paid')
+            ->sum('total');
     }
 
 
 
-    public function pieCartData2()
+    public function pieCartData2(Request $request = null)
     {
-        $playstations = Playstation::with(['device.transaction' => function($query) {
-            $query->where('payment_status', 'paid');
+        // Get period parameters from request or default to today
+        $period = $request ? $request->input('period', 'today') : 'today';
+        $start_date = $request ? $request->input('start_date') : null;
+        $end_date = $request ? $request->input('end_date') : null;
+        
+        // Calculate date range based on period
+        $dateRange = $this->getDateRange($period, $start_date, $end_date);
+        
+        $user = auth()->user();
+        
+        $playstations = Playstation::with(['device.transaction' => function($query) use ($user, $dateRange) {
+            $query->where('payment_status', 'paid')
+                  ->whereBetween('created_at', [$dateRange['start'], $dateRange['end']]);
+                  
+            // For cashiers, only show their own transactions
+            if ($user->isKasir()) {
+                $query->where('user_id', $user->id);
+            }
         }])
-        ->whereHas('device.transaction', function($query) {
-            $query->where('payment_status', 'paid');
+        ->whereHas('device.transaction', function($query) use ($user, $dateRange) {
+            $query->where('payment_status', 'paid')
+                  ->whereBetween('created_at', [$dateRange['start'], $dateRange['end']]);
+                  
+            // For cashiers, only show their own transactions
+            if ($user->isKasir()) {
+                $query->where('user_id', $user->id);
+            }
         })
         ->get();
         
@@ -112,8 +328,24 @@ class HomeController extends Controller
         $hoverBackgroundColors = ['#2e59d9', '#17a673', '#2c9faf', '#dda20a', '#be2617', '#6c757d'];
 
         foreach ($playstations as $index => $playstation) {
-            $sumRevenue = $playstation->device->sum(function($device) {
-                return $device->transaction->sum('total');
+            $sumRevenue = $playstation->device->sum(function($device) use ($dateRange, $user) {
+                return $device->transaction->sum(function($transaction) use ($user) {
+                    // Calculate only PlayStation revenue (harga * jam_main), excluding FnB
+                    $playstationRevenue = 0;
+                    
+                    if ($transaction->tipe_transaksi === 'custom_package') {
+                        // For custom packages, use the package price (which is PlayStation cost only)
+                        $playstationRevenue = $transaction->harga;
+                    } elseif ($transaction->tipe_transaksi === 'prepaid') {
+                        // For prepaid, calculate harga * jam_main
+                        $playstationRevenue = ($transaction->harga ?? 0) * ($transaction->jam_main ?? 0);
+                    } elseif ($transaction->tipe_transaksi === 'postpaid') {
+                        // For postpaid, use the harga field (base price)
+                        $playstationRevenue = $transaction->harga ?? 0;
+                    }
+                    
+                    return $playstationRevenue;
+                });
             });
             
             if ($sumRevenue > 0) {

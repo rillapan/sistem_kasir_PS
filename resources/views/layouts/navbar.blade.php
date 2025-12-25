@@ -31,6 +31,8 @@
         <div class="vr mx-3" style="height: 30px; opacity: 0.3;"></div>
     </div>
 
+
+
     <script>
         function formatWIBTime(date) {
             const options = { 
@@ -111,6 +113,16 @@
             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown"
                 aria-haspopup="true" aria-expanded="false">
                 <span class="mr-2 d-none d-lg-inline text-gray-600 small">{{ auth()->user()->name }}</span>
+                @if(auth()->user()->isKasir() && auth()->user()->workShift)
+                    <div class="d-none d-lg-inline-flex flex-column align-items-center ml-2">
+                        <span class="text-primary font-weight-bold" style="font-size: 0.9rem; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+                            {{ auth()->user()->workShift->nama_shift }}
+                        </span>
+                        <span class="text-gray-500" style="font-size: 0.75rem; font-family: 'Courier New', monospace; font-weight: 600;">
+                            {{ auth()->user()->workShift->jam_mulai }} - {{ auth()->user()->workShift->jam_selesai }}
+                        </span>
+                    </div>
+                @endif
                 @php
                     $userImage = auth()->user()->image ?? null;
                     $userImagePath = $userImage ? public_path('storage/' . $userImage) : null;

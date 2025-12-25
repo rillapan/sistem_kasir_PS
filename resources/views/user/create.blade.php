@@ -64,6 +64,28 @@
                         </span>
                     @enderror
                 </div>
+                <div class="form-group" id="work-shift-group" style="display: none;">
+                    <label for="work_shift_id">Jam Kerja</label>
+                    <div class="d-flex align-items-center">
+                        <select class="form-control @error('work_shift_id') is-invalid @enderror mr-2" id="work_shift_id" name="work_shift_id">
+                            <option value="">Pilih Jam Kerja</option>
+                            @foreach($workShifts as $workShift)
+                                <option value="{{ $workShift->id }}" {{ old('work_shift_id') == $workShift->id ? 'selected' : '' }}>
+                                    {{ $workShift->nama_shift }} ({{ $workShift->jam_mulai }} - {{ $workShift->jam_selesai }})
+                                </option>
+                            @endforeach
+                        </select>
+                        <a href="{{ route('work_shifts.create') }}" class="btn btn-sm btn-outline-primary" title="Tambah Jam Kerja Baru">
+                            <i class="fas fa-plus"></i>
+                        </a>
+                    </div>
+                    @error('work_shift_id')
+                        <span class="invalid-feedback" role="alert">
+                            <strong>{{ $message }}</strong>
+                        </span>
+                    @enderror
+                    <small class="text-muted">Klik tombol + untuk menambahkan jam kerja baru</small>
+                </div>
 
                 <button type="submit" class="btn btn-primary">Simpan</button>
                 <a href="{{ route('users.index') }}" class="btn btn-secondary">Batal</a>
@@ -76,12 +98,15 @@
     document.addEventListener('DOMContentLoaded', function() {
         const roleSelect = document.getElementById('role');
         const shiftGroup = document.getElementById('shift-group');
+        const workShiftGroup = document.getElementById('work-shift-group');
 
         function toggleShift() {
             if (roleSelect.value === 'kasir') {
                 shiftGroup.style.display = 'block';
+                workShiftGroup.style.display = 'block';
             } else {
                 shiftGroup.style.display = 'none';
+                workShiftGroup.style.display = 'none';
             }
         }
 

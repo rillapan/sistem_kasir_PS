@@ -33,6 +33,12 @@
                 <span>Manajemen User</span></a>
         </li>
 
+        <li class="nav-item {{ isset($active) && $active === 'work_shifts' ? 'active' : '' }}">
+            <a class="nav-link" href="{{ route('work_shifts.index') }}">
+                <i class="fas fa-clock"></i>
+                <span>Manajemen Jam Kerja</span></a>
+        </li>
+
         <li class="nav-item {{ isset($active) && $active === 'play' ? 'active' : '' }}">
             <a class="nav-link" href="{{ route('playstation.index') }}">
                 <i class="fas fa-gamepad"></i>

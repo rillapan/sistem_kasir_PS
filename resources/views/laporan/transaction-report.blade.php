@@ -79,12 +79,14 @@
                                         <td>{{ $transaction->id_transaksi }}</td>
                                         <td>
                                             @if($transaction->device)
-                                                {{ $transaction->device->nama_perangkat }}
+                                                {{ $transaction->device->nama ?? 'Unknown Device' }}
                                                 @if($transaction->device->playstation)
-                                                    - {{ $transaction->device->playstation->nama }}
+                                                    - {{ $transaction->device->playstation->nama ?? 'Unknown Type' }}
+                                                @else
+                                                    - No Type
                                                 @endif
                                             @else
-                                                -
+                                                No Device
                                             @endif
                                         </td>
                                         <td>
@@ -95,7 +97,7 @@
                                             @endif
                                         </td>
                                         <td>{{ $transaction->created_at->format('d M Y H:i:s') }}</td>
-                                        <td>{{ $transaction->updated_at->format('d M Y H:i:s') }}</td>
+                                        <td>{{ $transaction->paid_at ? $transaction->paid_at->format('d M Y H:i:s') : '-' }}</td>
                                         <td class="text-right">Rp {{ number_format($transaction->harga, 0, ',', '.') }}</td>
                                         <td class="text-center">{{ $transaction->jam_main }} jam</td>
                                         <td class="text-right">Rp {{ number_format($transaction->total, 0, ',', '.') }}</td>

@@ -22,7 +22,8 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
-        'shift'
+        'shift',
+        'work_shift_id'
     ];
 
     /**
@@ -43,6 +44,11 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+    public function workShift()
+    {
+        return $this->belongsTo(WorkShift::class);
+    }
 
     public function transaction()
     {

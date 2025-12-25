@@ -6,6 +6,8 @@
         <h1 class="h3 mb-0 text-gray-800">{{ $title }}</h1>
     </div>
 
+
+
     <!-- Content Row -->
     <div class="row">
         <!-- Earnings (Monthly) Card Example -->
@@ -62,7 +64,11 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Total Pendapatan Hari Ini
+                                @if(auth()->user()->isKasir())
+                                    Total Pendapatan Sesuai Jam Kerja Shift
+                                @else
+                                    Total Pendapatan Hari Ini
+                                @endif
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
                                 {{ 'Rp ' . number_format($today_pendapatan, 0, ',', '.') }}
@@ -82,14 +88,14 @@
     <!-- Content Row -->
     <div class="row">
         <!-- Area Chart -->
-        <div class="col-xl-8 col-lg-7">
+        <div class="col-12">
             <div class="card shadow mb-4">
                 <!-- Card Header - Dropdown -->
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                    <h6 class="m-0 font-weight-bold text-primary">
+                    <h6 class="m-0 font-weight-bold text-primary col-12">
                         Grafik Pendapatan Hari Ini
                     </h6>
-                    <div class="dropdown no-arrow">
+                    <div class="dropdown no-arrow col-12">
                         <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink"
                             data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                             <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
@@ -104,29 +110,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- Pie Chart -->
-        <div class="col-xl-4 col-lg-5">
-            <div class="card shadow mb-4">
-                <!-- Card Header - Dropdown -->
-                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        Grafik Pendapatan Berdasarakan Jenis Playstation
-                    </h6>
-                </div>
-                <!-- Card Body -->
-                <div class="card-body">
-                    <div class="chart-pie pt-4 pb-2">
-                        <canvas id="myPieChart2"></canvas>
-                    </div>
-                    <div class="mt-4 text-center small" id="dynamicLegend">
-                        <!-- Dynamic legend will be inserted here -->
-                    </div>
-                </div>
-            </div>
-            
-           
-        </div>
     </div>
 @section('scripts')
 <!-- Page level plugins -->
@@ -137,37 +120,72 @@ document.addEventListener('DOMContentLoaded', function() {
     // Pie Chart for PlayStation Revenue
     var ctx = document.getElementById("myPieChart2");
     if (ctx) {
-        var myPieChart2 = new Chart(ctx, {
-            type: 'doughnut',
-            data: {!! json_encode(app('App\Http\Controllers\HomeController')->pieCartData2()) !!},
-            options: {
-                maintainAspectRatio: false,
-                tooltips: {
-                    backgroundColor: "rgb(255,255,255)",
-                    bodyFontColor: "#858796",
-                    borderColor: '#dddfeb',
-                    borderWidth: 1,
-                    xPadding: 15,
-                    yPadding: 15,
-                    displayColors: false,
-                    caretPadding: 10,
-                    callbacks: {
-                        label: function(tooltipItem, data) {
-                            var label = data.labels[tooltipItem.index] || '';
-                            if (label) {
-                                label += ': ';
+        // Get current period parameters from URL
+        var urlParams = new URLSearchParams(window.location.search);
+        var period = urlParams.get('period') || 'today';
+        var startDate = urlParams.get('start_date') || '';
+        var endDate = urlParams.get('end_date') || '';
+        
+        // Build chart data URL with period parameters
+        var chartUrl = '{{ url("/chart-pie-data") }}';
+        var params = new URLSearchParams();
+        if (period) params.append('period', period);
+        if (startDate) params.append('start_date', startDate);
+        if (endDate) params.append('end_date', endDate);
+        
+        if (params.toString()) {
+            chartUrl += '?' + params.toString();
+        }
+        
+        // Fetch chart data with period parameters
+        fetch(chartUrl)
+            .then(response => response.json())
+            .then(data => {
+                var myPieChart2 = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: data,
+                    options: {
+                        maintainAspectRatio: false,
+                        tooltips: {
+                            backgroundColor: "rgb(255,255,255)",
+                            bodyFontColor: "#858796",
+                            borderColor: '#dddfeb',
+                            borderWidth: 1,
+                            xPadding: 15,
+                            yPadding: 15,
+                            displayColors: false,
+                            caretPadding: 10,
+                            callbacks: {
+                                label: function(tooltipItem, data) {
+                                    var label = data.labels[tooltipItem.index] || '';
+                                    if (label) {
+                                        return label;
+                                    }
+                                }
                             }
-                            label += 'Rp ' + data.datasets[0].data[tooltipItem.index].toLocaleString('id-ID');
-                            return label;
-                        }
-                    }
-                },
-                legend: {
-                    display: false
-                },
-                cutoutPercentage: 60,
-            },
-        });
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        cutoutPercentage: 60,
+                    },
+                });
+                
+                // Create dynamic legend
+                var legendContainer = document.getElementById('dynamicLegend');
+                if (legendContainer && data.labels && data.datasets[0]) {
+                    var legendHtml = '';
+                    data.labels.forEach(function(label, index) {
+                        var color = data.datasets[0].backgroundColor[index];
+                        legendHtml += '<span class="mr-2" style="display: inline-block; width: 12px; height: 12px; background-color: ' + color + '; border-radius: 50%;"></span>';
+                        legendHtml += '<span class="mr-3">' + label + '</span>';
+                    });
+                    legendContainer.innerHTML = legendHtml;
+                }
+            })
+            .catch(error => console.error('Error fetching chart data:', error));
     }
 
     // Bar Chart for Popular FnB
@@ -352,38 +370,76 @@ document.addEventListener('DOMContentLoaded', function() {
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="todayRevenueDetailModalLabel">Detail Pembayaran Hari Ini</h5>
+                <h5 class="modal-title" id="todayRevenueDetailModalLabel">
+                    @if(auth()->user()->isKasir())
+                        Detail Pendapatan Shift
+                    @else
+                        Detail Pembayaran Hari Ini
+                    @endif
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div class="text-center mb-3">
-                    <h4 class="text-warning">Total Pendapatan Hari Ini</h4>
-                    <h2 class="font-weight-bold">Rp {{ number_format($today_pendapatan, 0, ',', '.') }}</h2>
-                </div>
+                @if(auth()->user()->isKasir() && $todayRevenuePerUser->count() > 0)
+                    @foreach($todayRevenuePerUser as $userRevenue)
+                        @php
+                            $workShift = \App\Models\WorkShift::find($userRevenue->work_shift_id);
+                        @endphp
+                        <div class="text-center mb-4">
+                            <h4 class="text-warning">Total Pendapatan Shift</h4>
+                            <h5 class="text-info">{{ $workShift ? $workShift->nama_shift : 'Shift' }} - {{ $userRevenue->name }}</h5>
+                            <p class="text-muted mb-2">
+                                <i class="fas fa-clock"></i> 
+                                Jam Kerja: {{ $workShift ? $workShift->jam_mulai . ' - ' . $workShift->jam_selesai : '-' }}
+                            </p>
+                            <h2 class="font-weight-bold">Rp {{ number_format($userRevenue->revenue, 0, ',', '.') }}</h2>
+                        </div>
+                    @endforeach
+                @else
+                    <div class="text-center mb-3">
+                        @if(auth()->user()->isKasir())
+                            <h4 class="text-warning">Total Pendapatan Shift</h4>
+                            <p class="text-muted">Belum ada pendapatan untuk shift Anda hari ini</p>
+                        @else
+                            <h4 class="text-warning">Total Pendapatan Hari Ini</h4>
+                            <h2 class="font-weight-bold">Rp {{ number_format($today_pendapatan, 0, ',', '.') }}</h2>
+                        @endif
+                    </div>
+                @endif
                 
                 <hr>
 
                 <!-- Revenue Per User Section -->
                 @if(isset($todayRevenuePerUser) && $todayRevenuePerUser->count() > 0)
-                <div class="revenue-per-user-details mb-4">
-                    <h6 class="text-muted mb-3 font-weight-bold">Pendapatan Per Kasir:</h6>
-                    <div class="list-group">
-                        @foreach($todayRevenuePerUser as $userRevenue)
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <span class="font-weight-bold">{{ $userRevenue->name }}</span>
-                                <small class="text-muted d-block">
-                                    {{ ucfirst($userRevenue->role) }}
-                                </small>
+                    @if(!auth()->user()->isKasir())
+                        <div class="revenue-per-user-details mb-4">
+                            <h6 class="text-muted mb-3 font-weight-bold">Pendapatan Per Kasir:</h6>
+                            <div class="list-group">
+                                @foreach($todayRevenuePerUser as $userRevenue)
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span class="font-weight-bold">{{ $userRevenue->name }}</span>
+                                        <small class="text-muted d-block">
+                                            {{ ucfirst($userRevenue->role) }}
+                                            @if($userRevenue->role === 'kasir' && $userRevenue->work_shift_id)
+                                                @php
+                                                    $workShift = \App\Models\WorkShift::find($userRevenue->work_shift_id);
+                                                @endphp
+                                                @if($workShift)
+                                                    - {{ $workShift->nama_shift }} ({{ $workShift->jam_mulai }} - {{ $workShift->jam_selesai }})
+                                                @endif
+                                            @endif
+                                        </small>
+                                    </div>
+                                    <span class="badge badge-success badge-pill" style="font-size: 1rem;">
+                                        Rp {{ number_format($userRevenue->revenue, 0, ',', '.') }}
+                                    </span>
+                                </div>
+                                @endforeach
                             </div>
-                            <span class="badge badge-success badge-pill" style="font-size: 1rem;">
-                                Rp {{ number_format($userRevenue->revenue, 0, ',', '.') }}
-                            </span>
                         </div>
-                        @endforeach
-                    </div>
-                </div>
-                <hr>
+                        <hr>
+                    @endif
                 @endif
                 
                 <div class="payment-method-details">

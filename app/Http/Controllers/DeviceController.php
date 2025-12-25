@@ -114,7 +114,7 @@ class DeviceController extends Controller
             $device->update(['status' => $newStatus]);
         }
 
-        $latestTransactionsSub = Transaction::select('device_id', \DB::raw('MAX(created_at) as latest_transaction_at'))
+        $latestTransactionsSub = Transaction::select('device_id', DB::raw('MAX(created_at) as latest_transaction_at'))
             ->groupBy('device_id');
 
         $devices = Device::select('devices.*')
@@ -334,14 +334,151 @@ class DeviceController extends Controller
         // Update device basic info
         $device->update([
             'nama' => $validatedData['nama'],
-            'status' => $validatedData['status'],
-            'playstation_id' => $validatedData['playstation_ids'][0] // Keep for backward compatibility
+            'status' => $validatedData['status']
         ]);
 
         // Update PlayStation relationships
         $device->playstations()->sync($validatedData['playstation_ids']);
 
         return redirect('device')->with('success', 'Data perangkat berhasil diperbarui.');
+    }
+
+    /**
+     * Update device status via AJAX.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function updateStatus(Request $request, $id)
+    {
+        $validatedData = $request->validate([
+            'status' => 'required|in:tersedia,digunakan'
+        ]);
+
+        $device = Device::find($id);
+        
+        if (!$device) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Perangkat tidak ditemukan'
+            ], 404);
+        }
+
+        $device->update([
+            'status' => $validatedData['status']
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status perangkat berhasil diperbarui',
+            'status' => $validatedData['status']
+        ]);
+    }
+
+    /**
+     * Check and update device status based on active timers
+     * This method should be called periodically to update device statuses
+     */
+    public function updateDeviceStatusesFromTimers()
+    {
+        $now = Carbon::now();
+        $today = $now->toDateString();
+        
+        // Get all devices with their latest transactions
+        $devices = Device::with(['playstations'])->get();
+        
+        foreach ($devices as $device) {
+            // Get the latest transaction for this device
+            $latestTransaction = Transaction::where('device_id', $device->id)
+                ->where('payment_status', 'paid')
+                ->latest()
+                ->first();
+                
+            if (!$latestTransaction) {
+                // No transaction found, set to available
+                if ($device->status !== 'tersedia') {
+                    $device->update(['status' => 'tersedia']);
+                }
+                continue;
+            }
+            
+            $shouldUpdateStatus = false;
+            $newStatus = $device->status;
+            
+            // Check different transaction types and their completion status
+            if ($latestTransaction->tipe_transaksi === 'prepaid') {
+                // For prepaid: check if timer has completed
+                if ($latestTransaction->waktu_Selesai) {
+                    $endTime = Carbon::parse(
+                        $latestTransaction->created_at->format('Y-m-d') . ' ' . $latestTransaction->waktu_Selesai
+                    );
+                    
+                    if ($endTime <= $now && $device->status === 'digunakan') {
+                        // Timer completed but device still marked as used
+                        $shouldUpdateStatus = true;
+                        $newStatus = 'tersedia';
+                    }
+                }
+            } elseif ($latestTransaction->tipe_transaksi === 'postpaid') {
+                // For postpaid: check if transaction is completed
+                if ($latestTransaction->status_transaksi === 'selesai') {
+                    if ($device->status === 'digunakan') {
+                        $shouldUpdateStatus = true;
+                        $newStatus = 'tersedia';
+                    }
+                }
+            } elseif ($latestTransaction->tipe_transaksi === 'custom_package') {
+                // For custom packages: check if timer has completed
+                if ($latestTransaction->waktu_Selesai) {
+                    $endTime = Carbon::parse(
+                        $latestTransaction->created_at->format('Y-m-d') . ' ' . $latestTransaction->waktu_Selesai
+                    );
+                    
+                    if ($endTime <= $now && $device->status === 'digunakan') {
+                        // Timer completed but device still marked as used
+                        $shouldUpdateStatus = true;
+                        $newStatus = 'tersedia';
+                    }
+                }
+            }
+            
+            // Update status if needed
+            if ($shouldUpdateStatus) {
+                $device->update(['status' => $newStatus]);
+            }
+        }
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Status perangkat diperbarui berdasarkan timer aktif',
+            'updated_count' => $devices->where('updated', true)->count()
+        ]);
+    }
+
+    /**
+     * Test device status update functionality
+     */
+    public function testStatus($id)
+    {
+        $device = Device::find($id);
+        
+        if (!$device) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Device not found',
+                'device_id' => $id
+            ]);
+        }
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Device found',
+            'device_id' => $id,
+            'current_status' => $device->status,
+            'device_name' => $device->nama,
+            'csrf_token' => csrf_token()
+        ]);
     }
 
     /**
@@ -387,9 +524,121 @@ class DeviceController extends Controller
     {
         $device = Device::find($id);
         if ($device) {
-            $device->update(['status' => 'Tersedia']);
+            // Check if status is being changed to 'tersedia' and there's an active transaction
+            if ($device->status !== 'tersedia') {
+                $activeTransaction = Transaction::where('device_id', $id)
+                    ->where('status_transaksi', 'berjalan')
+                    ->latest()
+                    ->first();
+
+                if ($activeTransaction) {
+                    // End the active transaction and stop the timer
+                    $waktuSelesai = Carbon::now();
+                    $totalFnb = $activeTransaction->getFnbTotalAttribute();
+
+                    if ($activeTransaction->tipe_transaksi === 'postpaid') {
+                        // Calculate duration and cost for postpaid transactions
+                        $waktuMulai = Carbon::parse($activeTransaction->created_at->toDateString() . ' ' . $activeTransaction->waktu_mulai);
+                        $durationMinutes = $waktuMulai->diffInMinutes($waktuSelesai, false);
+
+                        if ($durationMinutes < 0) {
+                            $durationMinutes = 24 * 60 + $durationMinutes;
+                        }
+
+                        $playstation = $activeTransaction->device->playstation;
+                        $totalPs = $this->calculateLostTimePrice($playstation, $durationMinutes);
+                        $roundedTotalPs = $this->applyLostTimeRounding($totalPs);
+                        $total = $roundedTotalPs + $totalFnb;
+
+                        $hours = floor($durationMinutes / 60);
+                        $minutes = $durationMinutes % 60;
+                        $formattedDuration = sprintf('%d jam %d menit', $hours, $minutes);
+
+                        $activeTransaction->update([
+                            'waktu_Selesai' => $waktuSelesai->format('H:i'),
+                            'jam_main' => $formattedDuration,
+                            'total' => $total,
+                            'status_transaksi' => 'selesai',
+                            'payment_status' => 'unpaid'
+                        ]);
+                    } else {
+                        // For prepaid and custom_package, just mark as finished
+                        $activeTransaction->update([
+                            'status_transaksi' => 'selesai',
+                            'payment_status' => 'unpaid'
+                        ]);
+                    }
+                }
+            }
+
+            $device->update(['status' => 'tersedia']);
             return response()->json(['success' => true]);
         }
         return response()->json(['success' => false], 404);
+    }
+
+    /**
+     * Calculate the price for lost time based on PlayStation hourly prices
+     *
+     * @param Playstation $playstation
+     * @param int $durationMinutes
+     * @return float
+     */
+    private function calculateLostTimePrice($playstation, $durationMinutes)
+    {
+        // Get all available hourly prices (packages) for this PlayStation
+        $hourlyPrices = $playstation->getAvailableHoursWithPrices();
+        $basePrice = (float) ($playstation->harga ?? 0);
+        $costPerMinute = $basePrice / 60;
+        
+        // Split duration into full hours and remaining minutes
+        $fullHours = (int) floor($durationMinutes / 60);
+        $remainingMinutes = (int) ($durationMinutes % 60);
+        
+        $totalPrice = 0;
+        
+        // 1. Calculate price for the full hours part
+        if ($fullHours > 0) {
+            if (isset($hourlyPrices[$fullHours])) {
+                // If there's an hourly package for this exact number of hours, use it
+                $totalPrice += $hourlyPrices[$fullHours];
+            } else {
+                // Otherwise, multiply full hours by the base hourly price
+                $totalPrice += $basePrice * $fullHours;
+            }
+        }
+        
+        // 2. Add per-minute cost for the remaining minutes
+        if ($remainingMinutes > 0) {
+            $totalPrice += $remainingMinutes * $costPerMinute;
+        }
+        
+        return $totalPrice;
+    }
+
+    /**
+     * Apply specific rounding rules for lost time pricing
+     * If difference <= 500, round to 500
+     * If difference > 500, round to 1000
+     */
+    private function applyLostTimeRounding($total)
+    {
+        // Find the nearest lower thousand
+        $lowerThousand = floor($total / 1000) * 1000;
+        
+        // Calculate difference from the lower thousand
+        $difference = $total - $lowerThousand;
+        
+        // Apply rounding rules
+        if ($difference == 0) {
+            // Already a perfect thousand
+            return $total;
+        } elseif ($difference <= 500) {
+            // Round up to 500 (including exactly 500)
+            return $lowerThousand + 500;
+        } else {
+            // Round up to next thousand
+            return $lowerThousand + 1000;
+        }
     }
 }

@@ -55,11 +55,16 @@
                                                 </span>
                                             @enderror
                                         </div>
-                                        <div class="form-group">
+                                        <div class="form-group position-relative">
                                             <input id="password" type="password"
                                                 class="form-control form-control-user @error('password') is-invalid @enderror"
                                                 name="password" placeholder="Password" required
                                                 autocomplete="current-password">
+                                            <button type="button" class="btn btn-outline-secondary position-absolute" 
+                                                    style="right: 10px; top: 50%; transform: translateY(-50%); border: none; background: none; padding: 5px;"
+                                                    onclick="togglePassword()" title="Tampilkan/Sembunyikan Password">
+                                                <i id="password-toggle-icon" class="fas fa-eye" style="color: #6c757d;"></i>
+                                            </button>
 
                                             @error('password')
                                                 <span class="invalid-feedback" role="alert">
@@ -99,6 +104,23 @@
 
     <!-- Custom scripts for all pages-->
     <script src="js/sb-admin-2.min.js"></script>
+
+    <script>
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const toggleIcon = document.getElementById('password-toggle-icon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+            }
+        }
+    </script>
 
 </body>
 

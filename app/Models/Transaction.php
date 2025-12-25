@@ -32,7 +32,12 @@ class Transaction extends Model
         'tipe_transaksi',
         'custom_package_id',
         'diskon',
-        'lost_time_start'
+        'lost_time_start',
+        'paid_at'
+    ];
+
+    protected $casts = [
+        'paid_at' => 'datetime',
     ];
 
     public function device()
