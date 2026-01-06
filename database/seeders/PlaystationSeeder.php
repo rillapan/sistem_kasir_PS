@@ -31,6 +31,22 @@ class PlaystationSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+            [
+                'id' => 3,
+                'nama' => 'BILLIARD pagi',
+                'image' => 'post-images/billiard.jpg',
+                'harga' => 25000,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'id' => 4,
+                'nama' => 'BILLIARD sore',
+                'image' => 'post-images/billiard.jpg',
+                'harga' => 30000,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
             // Add more if needed for other devices
         ]);
     }

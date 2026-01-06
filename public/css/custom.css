@@ -62,3 +62,31 @@
     flex: 1;
     padding: 20px;
 }
+
+/* Handle sidebar toggle state */
+body.sidebar-toggled .sidebar {
+    width: 6.5rem;
+}
+
+body.sidebar-toggled #content {
+    margin-left: 6.5rem;
+    width: calc(100% - 6.5rem);
+}
+
+body.sidebar-toggled .sidebar .sidebar-brand-text,
+body.sidebar-toggled .sidebar .sidebar-heading {
+    display: none;
+}
+
+body.sidebar-toggled .sidebar .nav-link span {
+    display: none;
+}
+
+body.sidebar-toggled .sidebar .nav-link {
+    text-align: center;
+    padding: 0.75rem 1rem;
+}
+
+body.sidebar-toggled .sidebar .nav-link i {
+    margin-right: 0;
+}

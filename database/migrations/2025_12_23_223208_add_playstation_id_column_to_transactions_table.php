@@ -13,10 +13,12 @@ class AddPlaystationIdColumnToTransactionsTable extends Migration
      */
     public function up()
     {
-        Schema::table('transactions', function (Blueprint $table) {
-            $table->unsignedBigInteger('playstation_id')->nullable()->after('device_id');
-            $table->foreign('playstation_id')->references('id')->on('playstations')->onDelete('set null');
-        });
+        if (!Schema::hasColumn('transactions', 'playstation_id')) {
+            Schema::table('transactions', function (Blueprint $table) {
+                $table->unsignedBigInteger('playstation_id')->nullable()->after('device_id');
+                $table->foreign('playstation_id')->references('id')->on('playstations')->onDelete('set null');
+            });
+        }
     }
 
     /**

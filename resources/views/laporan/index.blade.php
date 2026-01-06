@@ -116,6 +116,10 @@
                         <div class="form-group row">
                             <label class="col-sm-2 col-form-label">Jenis PlayStation</label>
                             <div class="col-sm-10">
+                                <div class="mb-2">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllPlaystations()">Pilih Semua</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetPlaystations()">Reset</button>
+                                </div>
                                 <div class="row">
                                     @foreach($playstationTypes as $playstation)
                                         <div class="col-sm-3 mb-2">
@@ -128,7 +132,7 @@
                                         </div>
                                     @endforeach
                                 </div>
-                                <small class="form-text text-muted">Pilih jenis PlayStation yang ingin ditampilkan dalam laporan. Jika tidak dipilih, semua jenis akan ditampilkan.</small>
+                                <small class="form-text text-muted">Pilih jenis PlayStation yang ingin ditampilkan dalam laporan.</small>
                             </div>
                         </div>
 
@@ -213,6 +217,20 @@
             toggleCustomDate(); // Run on load
         }
     });
+
+    function selectAllPlaystations() {
+        const checkboxes = document.querySelectorAll('input[name="playstation_types[]"]');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = true;
+        });
+    }
+
+    function resetPlaystations() {
+        const checkboxes = document.querySelectorAll('input[name="playstation_types[]"]');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+    }
 </script>
 
 @if($startDate && $endDate)

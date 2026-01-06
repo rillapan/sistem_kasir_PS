@@ -325,16 +325,14 @@ class DeviceController extends Controller
         $validatedData = $request->validate([
             'nama' => 'required|min:3',
             'playstation_ids' => 'required|array|min:1',
-            'playstation_ids.*' => 'exists:playstations,id',
-            'status' => 'required'
+            'playstation_ids.*' => 'exists:playstations,id'
         ]);
 
         $device = Device::find($id);
         
         // Update device basic info
         $device->update([
-            'nama' => $validatedData['nama'],
-            'status' => $validatedData['status']
+            'nama' => $validatedData['nama']
         ]);
 
         // Update PlayStation relationships
@@ -350,31 +348,7 @@ class DeviceController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function updateStatus(Request $request, $id)
-    {
-        $validatedData = $request->validate([
-            'status' => 'required|in:tersedia,digunakan'
-        ]);
 
-        $device = Device::find($id);
-        
-        if (!$device) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Perangkat tidak ditemukan'
-            ], 404);
-        }
-
-        $device->update([
-            'status' => $validatedData['status']
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Status perangkat berhasil diperbarui',
-            'status' => $validatedData['status']
-        ]);
-    }
 
     /**
      * Check and update device status based on active timers
@@ -397,8 +371,8 @@ class DeviceController extends Controller
                 
             if (!$latestTransaction) {
                 // No transaction found, set to available
-                if ($device->status !== 'tersedia') {
-                    $device->update(['status' => 'tersedia']);
+                if ($device->status !== 'Tersedia') {
+                    $device->update(['status' => 'Tersedia']);
                 }
                 continue;
             }
@@ -414,18 +388,18 @@ class DeviceController extends Controller
                         $latestTransaction->created_at->format('Y-m-d') . ' ' . $latestTransaction->waktu_Selesai
                     );
                     
-                    if ($endTime <= $now && $device->status === 'digunakan') {
+                    if ($endTime <= $now && $device->status === 'Digunakan') {
                         // Timer completed but device still marked as used
                         $shouldUpdateStatus = true;
-                        $newStatus = 'tersedia';
+                        $newStatus = 'Tersedia';
                     }
                 }
             } elseif ($latestTransaction->tipe_transaksi === 'postpaid') {
                 // For postpaid: check if transaction is completed
                 if ($latestTransaction->status_transaksi === 'selesai') {
-                    if ($device->status === 'digunakan') {
+                    if ($device->status === 'Digunakan') {
                         $shouldUpdateStatus = true;
-                        $newStatus = 'tersedia';
+                        $newStatus = 'Tersedia';
                     }
                 }
             } elseif ($latestTransaction->tipe_transaksi === 'custom_package') {
@@ -435,10 +409,10 @@ class DeviceController extends Controller
                         $latestTransaction->created_at->format('Y-m-d') . ' ' . $latestTransaction->waktu_Selesai
                     );
                     
-                    if ($endTime <= $now && $device->status === 'digunakan') {
+                    if ($endTime <= $now && $device->status === 'Digunakan') {
                         // Timer completed but device still marked as used
                         $shouldUpdateStatus = true;
-                        $newStatus = 'tersedia';
+                        $newStatus = 'Tersedia';
                     }
                 }
             }
@@ -520,12 +494,12 @@ class DeviceController extends Controller
         ]);
     }
 
-    public function updateStatusAjax($id)
+    public function updateStatus($id)
     {
         $device = Device::find($id);
         if ($device) {
             // Check if status is being changed to 'tersedia' and there's an active transaction
-            if ($device->status !== 'tersedia') {
+            if ($device->status !== 'Tersedia') {
                 $activeTransaction = Transaction::where('device_id', $id)
                     ->where('status_transaksi', 'berjalan')
                     ->latest()
@@ -571,7 +545,7 @@ class DeviceController extends Controller
                 }
             }
 
-            $device->update(['status' => 'tersedia']);
+            $device->update(['status' => 'Tersedia']);
             return response()->json(['success' => true]);
         }
         return response()->json(['success' => false], 404);

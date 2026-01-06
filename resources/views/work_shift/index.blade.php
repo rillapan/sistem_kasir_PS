@@ -37,10 +37,11 @@
                                     <a href="{{ route('work_shifts.edit', $workShift->id) }}" class="btn btn-sm btn-warning">
                                         <i class="fas fa-edit"></i>
                                     </a>
+
                                     <form action="{{ route('work_shifts.destroy', $workShift->id) }}" method="POST" style="display: inline;">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Apakah Anda yakin ingin menghapus jam kerja ini?')">
+                                        <button type="submit" class="btn btn-sm btn-danger ml-2" onclick="return confirm('Apakah Anda yakin ingin menghapus jam kerja ini?')">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </form>

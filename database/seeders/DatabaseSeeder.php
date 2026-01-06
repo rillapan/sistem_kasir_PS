@@ -7,6 +7,7 @@ use Database\Seeders\UserSeeder;
 use Database\Seeders\BookingSeeder;
 use Database\Seeders\DevicePlaystationSeeder;
 use Database\Seeders\WorkShiftSeeder;
+use Database\Seeders\PlaystationSeeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -18,10 +19,11 @@ class DatabaseSeeder extends Seeder
     public function run()
     {
         $this->call([
+            WorkShiftSeeder::class,
+            PlaystationSeeder::class,
             UserSeeder::class,
             BookingSeeder::class,
             DevicePlaystationSeeder::class,
-            WorkShiftSeeder::class,
         ]);
 
         // Buat user admin

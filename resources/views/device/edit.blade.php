@@ -54,18 +54,6 @@
                             </button>
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="status">Status Perangkat</label>
-                        <div class="d-flex align-items-center gap-2">
-                            <select class="form-control" id="status" name="status">
-                                <option value="tersedia" {{ old('status', $device->status) === 'tersedia' ? 'selected' : '' }}>Tersedia</option>
-                                <option value="digunakan" {{ old('status', $device->status) === 'digunakan' ? 'selected' : '' }}>Digunakan</option>
-                            </select>
-                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="toggleDeviceStatus()">
-                                <i class="fas fa-exchange-alt"></i> Toggle Status
-                            </button>
-                        </div>
-                    </div>
                     <button class="btn btn-primary btn-sm" type="submit">Submit</button>
                 </form>
             </div>
@@ -75,8 +63,6 @@
 
 @section('scripts')
 <script>
-let currentServerStatus = "{{ $device->status }}";
-
 function selectAllPlaystations() {
     const checkboxes = document.querySelectorAll('input[name="playstation_ids[]"]');
     checkboxes.forEach(checkbox => {
@@ -89,44 +75,6 @@ function clearAllPlaystations() {
     checkboxes.forEach(checkbox => {
         checkbox.checked = false;
     });
-}
-
-function toggleDeviceStatus() {
-    console.log('Toggle device status function called');
-    
-    const statusSelect = document.getElementById('status');
-    if (statusSelect) {
-        const currentStatus = statusSelect.value;
-        const newStatus = currentStatus === 'tersedia' ? 'digunakan' : 'tersedia';
-        const deviceId = {{ $device->id }};
-        
-        console.log('Current status:', currentStatus);
-        console.log('New status:', newStatus);
-        console.log('Device ID:', deviceId);
-        
-        // Check if changing from 'digunakan' to 'tersedia' and show confirmation
-        if (currentStatus === 'digunakan' && newStatus === 'tersedia') {
-            // Use simple confirm as fallback
-            const confirmMessage = "Anda yakin ingin mengubah status perangkat ini dari digunakan [timer berjalan] ke 'tersedia', jika ya maka timer akan hilang dan perangkat menjadi tersedia";
-            
-            if (!confirm(confirmMessage)) {
-                console.log('User cancelled the status change');
-                return; // User cancelled the operation
-            }
-            console.log('User confirmed the status change');
-        }
-        
-        // Visual feedback
-        const toggleBtn = event.target.closest('button');
-        const originalHtml = toggleBtn.innerHTML;
-        toggleBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengubah...';
-        toggleBtn.disabled = true;
-        
-        // Proceed with the status change
-        executeStatusChange(deviceId, newStatus, toggleBtn, originalHtml);
-    } else {
-        console.error('Status select element not found!');
-    }
 }
 
 // Auto-update device statuses based on active timers
@@ -142,21 +90,6 @@ function updateAllDeviceStatuses() {
     .then(data => {
         if (data.success) {
             console.log(`Updated ${data.updated_count} device statuses based on active timers`);
-            
-            // Update the status dropdown if this device was updated
-            const currentDeviceId = {{ $device->id }};
-            const statusSelect = document.getElementById('status');
-            if (statusSelect) {
-                // Refresh current device status from server
-                fetch(`/device/${currentDeviceId}`)
-                    .then(response => response.json())
-                    .then(deviceData => {
-                        if (deviceData.status) {
-                            statusSelect.value = deviceData.status;
-                        }
-                    })
-                    .catch(error => console.error('Error fetching device status:', error));
-            }
         }
     })
     .catch(error => {
@@ -172,106 +105,11 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(updateAllDeviceStatuses, 2000); // Wait 2 seconds after page load
 });
 
-function executeStatusChange(deviceId, newStatus, toggleBtn, originalHtml) {
-    console.log('Executing status change:', { deviceId, newStatus });
-    
-    // Check CSRF token
-    const csrfToken = document.querySelector('meta[name="csrf-token"]');
-    console.log('CSRF Token found:', csrfToken ? csrfToken.getAttribute('content') : 'NOT FOUND');
-    
-    // Determine URL and Body based on newStatus
-    let url = `/device/${deviceId}/update-status`;
-    let body = JSON.stringify({ status: newStatus });
-
-    if (newStatus === 'tersedia') {
-        url = `/device/${deviceId}/force-stop`;
-        // force-stop route uses updateStatusAjax which doesn't require a body for status
-        body = JSON.stringify({}); 
-    }
-
-    // Make AJAX call to update device status
-    fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken ? csrfToken.getAttribute('content') : ''
-        },
-        body: body
-    })
-    .then(response => {
-        console.log('Response status:', response.status);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        console.log('Response data:', data);
-        
-        if (data.success) {
-            const statusSelect = document.getElementById('status');
-            statusSelect.value = newStatus;
-            currentServerStatus = newStatus;
-            toggleBtn.innerHTML = '<i class="fas fa-exchange-alt"></i> Toggle Status';
-            toggleBtn.disabled = false;
-            
-            // Show success message
-            const alertDiv = document.createElement('div');
-            alertDiv.className = 'alert alert-success alert-dismissible fade show mt-2';
-            alertDiv.innerHTML = `
-                Status berhasil diubah ke <strong>${newStatus === 'tersedia' ? 'Tersedia' : 'Digunakan'}</strong>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            `;
-            
-            statusSelect.closest('.mb-3').after(alertDiv);
-            
-            // Auto-dismiss after 3 seconds
-            setTimeout(() => {
-                alertDiv.remove();
-            }, 3000);
-        } else {
-            throw new Error(data.message || 'Gagal mengubah status');
-        }
-    })
-    .catch(error => {
-        console.error('Error details:', error);
-        
-        toggleBtn.innerHTML = originalHtml;
-        toggleBtn.disabled = false;
-        
-        // Show error message
-        const alertDiv = document.createElement('div');
-        alertDiv.className = 'alert alert-danger alert-dismissible fade show mt-2';
-        alertDiv.innerHTML = `
-            Gagal mengubah status: ${error.message || 'Unknown error'}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        `;
-        
-        const statusSelect = document.getElementById('status');
-        statusSelect.closest('.mb-3').after(alertDiv);
-        
-        setTimeout(() => {
-            alertDiv.remove();
-        }, 5000);
-    });
-}
-
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('device-update-form');
     if (form) {
         form.addEventListener('submit', function(e) {
-            const statusSelect = document.getElementById('status');
-            const selectedStatus = statusSelect.value;
-            
-            // Check if changing from 'digunakan' to 'tersedia'
-            // We use currentServerStatus to know the actual state in DB (or last validated state)
-            if (currentServerStatus === 'digunakan' && selectedStatus === 'tersedia') {
-                 const confirmMessage = "Anda yakin ingin mengubah status perangkat ini dari digunakan [timer berjalan] ke 'tersedia', jika ya maka timer akan hilang dan perangkat menjadi tersedia";
-                 
-                 if (!confirm(confirmMessage)) {
-                     e.preventDefault(); // Stop submission
-                 }
-            }
+            // Form submission logic without status check
         });
     }
 });

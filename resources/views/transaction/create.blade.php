@@ -1372,20 +1372,31 @@
             }
 
             // Check for multi-playstation device without playstation selection
+            // Check for multi-playstation device without playstation selection
             if (deviceId && deviceId !== 'dummy' && deviceId !== '') {
                 // Check if device has multiple playstation types and playstation_id is not selected
                 const deviceSelect = document.getElementById('device_id');
                 const selectedOption = deviceSelect.options[deviceSelect.selectedIndex];
-                const hasMultiplePlaystations = selectedOption && selectedOption.getAttribute('data-playstations');
+                const playstationsData = selectedOption && selectedOption.getAttribute('data-playstations');
                 
-                if (hasMultiplePlaystations && !playstationId) {
-                    errors.push('Perangkat ini memiliki beberapa jenis perangkat. Silakan pilih jenis perangkat terlebih dahulu.');
+                if (playstationsData) {
+                    try {
+                        const playstations = JSON.parse(playstationsData);
+                        if (Array.isArray(playstations) && playstations.length > 1 && !playstationId) {
+                            errors.push('Perangkat ini memiliki beberapa jenis perangkat. Silakan pilih jenis perangkat terlebih dahulu.');
+                        }
+                    } catch (e) {
+                        console.error("Error parsing playstations data during validation", e);
+                    }
                 }
             }
 
             // Check total
-            if (!total || total === '0' || isNaN(total)) {
-                errors.push('Total transaksi harus terisi dengan benar');
+            // Allow total to be 0 for postpaid transactions
+            if (!tipeTransaksi || tipeTransaksi.value !== 'postpaid') {
+                if (!total || total === '0' || isNaN(total)) {
+                    errors.push('Total transaksi harus terisi dengan benar');
+                }
             }
 
             // Show errors if any
