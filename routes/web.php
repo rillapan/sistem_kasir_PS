@@ -62,6 +62,9 @@ Route::middleware(['auth', 'check_role:admin,kasir'])->group(function () {
     Route::get('/device/by-playstation/{id}', [App\Http\Controllers\DeviceController::class, 'byPlaystation'])->name('device.byPlaystation');
     Route::get('/booking/{id}/add', [App\Http\Controllers\DeviceController::class, 'bookingAdd']);
     Route::get('/booking/{id}', [App\Http\Controllers\DeviceController::class, 'booking']);
+    Route::post('/device/{id}/stop', [App\Http\Controllers\DeviceController::class, 'stopDevice'])->name('device.stop');
+    Route::get('/device/{id}/debug', [App\Http\Controllers\DeviceController::class, 'debugDevice'])->name('device.debug');
+    Route::get('/device/{id}/test-stop', [App\Http\Controllers\DeviceController::class, 'testStopDevice'])->name('device.testStop');
 
     // Expense (Kasir creates, Admin manages)
     Route::resource('/expense', App\Http\Controllers\ExpenseController::class);

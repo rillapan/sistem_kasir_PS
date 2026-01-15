@@ -155,6 +155,13 @@
                                     @endif
 
                                     @if (auth()->user()->role === 'admin' || auth()->user()->role === 'kasir')
+                                        @if ($device->status === 'Digunakan' || (isset($customers[$device->id]) && $customers[$device->id]['status_transaksi'] === 'berjalan'))
+                                            <button type="button" class="btn btn-sm btn-warning" 
+                                                onclick="confirmStopDevice({{ $device->id }}, '{{ $device->nama }}')"
+                                                title="Hentikan timer dan ubah status menjadi tersedia">
+                                                <i class="fas fa-stop"></i> Berhenti
+                                            </button>
+                                        @endif
                                         @if (isset($customers[$device->id]) && $customers[$device->id]['tipe_transaksi'] === 'postpaid' && $customers[$device->id]['status_transaksi'] === 'berjalan')
                                             <button type="button" class="btn btn-sm btn-success" 
                                                 data-bs-toggle="modal" 
@@ -207,6 +214,30 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stop Device Confirmation Modal -->
+    <div class="modal fade" id="stopDeviceModal" tabindex="-1" aria-labelledby="stopDeviceModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="stopDeviceModalLabel">Konfirmasi Berhenti</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <h5>Apakah Anda yakin ingin menghentikan timer perangkat ini?</h5>
+                    <p class="mb-0"><strong id="stop-device-name">Nama Perangkat</strong></p>
+                    <p class="text-muted">Timer akan dihentikan dan status perangkat akan diubah menjadi "Tersedia"</p>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <form id="stopDeviceForm" method="POST" action="">
+                        @csrf
+                        <button type="submit" class="btn btn-warning"><i class="fas fa-stop"></i> Ya, Berhenti</button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -390,5 +421,163 @@
                 document.getElementById('modal-finish-timer').textContent = timerValue;
             });
         }
+
+        // Stop Device Confirmation Function
+        function confirmStopDevice(deviceId, deviceName) {
+            console.log('Stopping device:', deviceId, deviceName);
+            
+            // Update modal content
+            document.getElementById('stop-device-name').textContent = deviceName;
+            
+            // Update form action
+            document.getElementById('stopDeviceForm').action = `/device/${deviceId}/stop`;
+            
+            // Show modal
+            var stopModal = new bootstrap.Modal(document.getElementById('stopDeviceModal'));
+            stopModal.show();
+        }
+
+        // Handle Stop Device Form Submission
+        document.getElementById('stopDeviceForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            var form = e.target;
+            var submitButton = form.querySelector('button[type="submit"]');
+            var originalButtonText = submitButton.innerHTML;
+            
+            // Disable button and show loading
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+            
+            // Get CSRF token
+            var csrfToken = document.querySelector('meta[name="csrf-token"]');
+            if (!csrfToken) {
+                console.error('CSRF token meta tag not found');
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalButtonText;
+                return;
+            }
+            
+            var formData = new FormData(form);
+            
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken.getAttribute('content'),
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                
+                if (data.success) {
+                    // Close modal
+                    var stopModal = bootstrap.Modal.getInstance(document.getElementById('stopDeviceModal'));
+                    if (stopModal) {
+                        stopModal.hide();
+                    }
+                    
+                    // Show success message
+                    var alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-success col-lg-8';
+                    alertDiv.role = 'alert';
+                    alertDiv.textContent = data.message;
+                    
+                    // Insert alert at the top
+                    var container = document.querySelector('.container-fluid');
+                    if (container) {
+                        container.insertBefore(alertDiv, container.firstChild);
+                    }
+                    
+                    // Remove alert after 3 seconds
+                    setTimeout(() => {
+                        if (alertDiv.parentNode) {
+                            alertDiv.parentNode.removeChild(alertDiv);
+                        }
+                    }, 3000);
+                    
+                    // Update device status immediately
+                    var deviceId = data.device_id;
+                    var statusElement = document.getElementById('status-' + deviceId);
+                    if (statusElement) {
+                        statusElement.innerHTML = '<i class="fa fa-circle text-success" aria-hidden="true"></i> Tersedia';
+                    }
+                    
+                    // Clear timer display
+                    var timerElement = document.getElementById('timer-' + deviceId);
+                    if (timerElement) {
+                        timerElement.textContent = '-';
+                    }
+                    
+                    // Remove stop button
+                    var stopButton = document.querySelector(`button[onclick*="confirmStopDevice(${deviceId})"]`);
+                    if (stopButton) {
+                        stopButton.remove();
+                    }
+                    
+                    // Update device counts in the summary cards
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    // Show error message
+                    var alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-danger col-lg-8';
+                    alertDiv.role = 'alert';
+                    alertDiv.textContent = data.message || 'Gagal menghentikan perangkat';
+                    
+                    // Insert alert at the top
+                    var container = document.querySelector('.container-fluid');
+                    if (container) {
+                        container.insertBefore(alertDiv, container.firstChild);
+                    }
+                    
+                    // Remove alert after 5 seconds
+                    setTimeout(() => {
+                        if (alertDiv.parentNode) {
+                            alertDiv.parentNode.removeChild(alertDiv);
+                        }
+                    }, 5000);
+                }
+            })
+            .catch(error => {
+                console.error('Error stopping device:', error);
+                
+                // Show generic error message
+                var alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-danger col-lg-8';
+                alertDiv.role = 'alert';
+                alertDiv.textContent = 'Terjadi kesalahan saat menghentikan perangkat. Silakan coba lagi.';
+                
+                // Insert alert at the top of the main content area
+                var mainContent = document.querySelector('.container-fluid');
+                if (mainContent) {
+                    mainContent.insertBefore(alertDiv, mainContent.firstChild);
+                } else {
+                    // Fallback
+                    var contentSection = document.querySelector('section');
+                    if (contentSection && contentSection.parentNode) {
+                        contentSection.parentNode.insertBefore(alertDiv, contentSection);
+                    }
+                }
+                
+                // Remove alert after 5 seconds
+                setTimeout(() => {
+                    if (alertDiv && alertDiv.parentNode) {
+                        alertDiv.parentNode.removeChild(alertDiv);
+                    }
+                }, 5000);
+            })
+            .finally(() => {
+                // Restore button
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalButtonText;
+            });
+        });
     </script>
 @endsection

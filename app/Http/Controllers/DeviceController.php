@@ -456,6 +456,164 @@ class DeviceController extends Controller
     }
 
     /**
+     * Debug device status and transactions
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function debugDevice($id)
+    {
+        try {
+            $device = Device::find($id);
+            
+            if (!$device) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Perangkat tidak ditemukan',
+                    'device_id' => $id
+                ]);
+            }
+
+            $today = Carbon::now()->toDateString();
+            
+            // Get all transactions for this device today
+            $allTransactions = Transaction::where('device_id', $id)
+                ->whereDate('created_at', $today)
+                ->get(['id_transaksi', 'tipe_transaksi', 'status_transaksi', 'waktu_mulai', 'waktu_Selesai', 'created_at']);
+
+            // Get active transactions
+            $activeTransactions = Transaction::where('device_id', $id)
+                ->whereDate('created_at', $today)
+                ->where(function($query) {
+                    $query->where('status_transaksi', 'berjalan')
+                          ->orWhereNull('status_transaksi');
+                })
+                ->get(['id_transaksi', 'tipe_transaksi', 'status_transaksi', 'waktu_mulai', 'waktu_Selesai', 'created_at']);
+
+            return response()->json([
+                'success' => true,
+                'device_id' => $id,
+                'device_name' => $device->nama,
+                'device_status' => $device->status,
+                'today' => $today,
+                'all_transactions_count' => $allTransactions->count(),
+                'active_transactions_count' => $activeTransactions->count(),
+                'all_transactions' => $allTransactions,
+                'active_transactions' => $activeTransactions,
+                'should_show_stop_button' => $device->status === 'Digunakan' || $activeTransactions->count() > 0
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+                'device_id' => $id
+            ]);
+        }
+    }
+
+    /**
+     * Test stop device functionality (debugging)
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function testStopDevice($id)
+    {
+        try {
+            $device = Device::find($id);
+            
+            if (!$device) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Perangkat tidak ditemukan',
+                    'device_id' => $id
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Test berhasil - device ditemukan',
+                'device_id' => $id,
+                'device_name' => $device->nama,
+                'current_status' => $device->status,
+                'csrf_token' => csrf_token()
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+                'device_id' => $id
+            ]);
+        }
+    }
+
+    /**
+     * Stop device timer and change status to 'Tersedia'
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function stopDevice($id)
+    {
+        try {
+            $device = Device::find($id);
+            
+            if (!$device) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Perangkat tidak ditemukan'
+                ], 404);
+            }
+
+            // Find any active transaction for this device today
+            $today = Carbon::now()->toDateString();
+            $activeTransaction = Transaction::where('device_id', $id)
+                ->whereDate('created_at', $today)
+                ->where(function($query) {
+                    $query->where('status_transaksi', 'berjalan')
+                          ->orWhereNull('status_transaksi');
+                })
+                ->latest()
+                ->first();
+
+            if (!$activeTransaction) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak ada transaksi aktif untuk perangkat ini'
+                ], 400);
+            }
+
+            // Mark transaction as finished regardless of device status
+            $activeTransaction->update([
+                'waktu_Selesai' => Carbon::now()->format('H:i'),
+                'status_transaksi' => 'selesai',
+                'payment_status' => 'unpaid'
+            ]);
+
+            // Force update device status to 'Tersedia'
+            $device->update(['status' => 'Tersedia']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Timer perangkat berhasil dihentikan dan status diubah menjadi tersedia',
+                'device_id' => $id,
+                'device_name' => $device->nama,
+                'new_status' => 'Tersedia',
+                'previous_status' => $device->getOriginal('status'),
+                'transaction_id' => $activeTransaction->id_transaksi
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Remove the specified resource from storage.
      *
      * @param  int  $id
