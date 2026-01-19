@@ -1,0 +1,92 @@
+/* Custom styles for fixed sidebar */
+.sidebar {
+    position: fixed;
+    width: 250px;
+    height: 100vh;
+    overflow-y: auto;
+    z-index: 1;
+}
+
+/* Adjust main content when sidebar is fixed */
+#content {
+    margin-left: 250px;
+    width: calc(100% - 250px);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s;
+}
+
+/* Ensure proper spacing for mobile view */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+    }
+    
+    #content {
+        margin-left: 0;
+        width: 100%;
+    }
+}
+
+/* Custom scrollbar for sidebar */
+.sidebar::-webkit-scrollbar {
+    width: 5px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: #4e73df;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: #aab7cf;
+    border-radius: 5px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: #858796;
+}
+
+/* Ensure the content wrapper takes full width */
+#content-wrapper {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Adjust the main content padding */
+.main-content {
+    flex: 1;
+    padding: 20px;
+}
+
+/* Handle sidebar toggle state */
+body.sidebar-toggled .sidebar {
+    width: 6.5rem;
+}
+
+body.sidebar-toggled #content {
+    margin-left: 6.5rem;
+    width: calc(100% - 6.5rem);
+}
+
+body.sidebar-toggled .sidebar .sidebar-brand-text,
+body.sidebar-toggled .sidebar .sidebar-heading {
+    display: none;
+}
+
+body.sidebar-toggled .sidebar .nav-link span {
+    display: none;
+}
+
+body.sidebar-toggled .sidebar .nav-link {
+    text-align: center;
+    padding: 0.75rem 1rem;
+}
+
+body.sidebar-toggled .sidebar .nav-link i {
+    margin-right: 0;
+}

@@ -1,0 +1,36 @@
+// Fonts
+@import url('https://fonts.googleapis.com/css?family=Nunito');
+
+// Variables
+@import 'variables';
+
+// Bootstrap
+@import '~bootstrap/scss/bootstrap';
+
+// Custom styles
+.sidebar {
+    position: fixed !important;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 100;
+    padding: 48px 0 0;
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+    overflow-y: auto;
+}
+
+#content-wrapper {
+    margin-left: 14rem;
+    width: calc(100% - 14rem);
+    min-height: 100vh;
+    transition: all 0.3s;
+}
+
+.sidebar-toggled #content-wrapper {
+    margin-left: 0;
+    width: 100%;
+}
+
+.sidebar {
+    min-height: 100vh;
+}
